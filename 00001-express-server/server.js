@@ -4,15 +4,7 @@ const app = express()
 
 app.use(express.json())
 
-
 let notes = []
-/**
- *
- * note = {
- * title
- * description
- * }
- */
 
 app.get("/", function (req, res) {
     res.json({
@@ -39,8 +31,6 @@ app.post("/api/note", function (req, res) {
     })
     console.log(notes)
 })
-
-
 
 app.get("/api/note", function (req, res) {
     res.status(200).json({
