@@ -3,6 +3,9 @@ import jwt from 'jsonwebtoken'
 import config from '../config/config.js'
 import bcrypt from 'bcryptjs'
 
+
+
+
 export async function register(req, res) {
 
     const { name, email, password } = req.body
@@ -169,4 +172,26 @@ export async function login(req, res) {
         token
     })
 
+}
+
+export async function getMe(req, res) {
+
+    try {
+
+        const user = await userModel.findById(req.user.id)
+
+        return res.status(200).json({
+            message: "User fetched successfully",
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email
+            }
+        })
+
+    } catch (err) {
+        res.status(401).json({
+            message: "Invalid or expired token"
+        })
+    }
 }
