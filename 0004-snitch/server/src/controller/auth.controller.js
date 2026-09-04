@@ -80,7 +80,7 @@ export async function register(req, res) {
     const user = await userModel.create({
         name,
         email,
-        password: hashedPassword
+        passwordHash: hashedPassword
     })
 
     const token = jwt.sign({
@@ -98,5 +98,75 @@ export async function register(req, res) {
         token
     })
 
+
+}
+
+export async function login(req, res) {
+
+    const { email, password } = req.body
+
+    const errors = []
+
+    if (!email) {
+        errors.push({
+            message: "Email is required",
+            field: "email"
+        })
+    }
+
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+    if (email && !regex.test(email)) {
+        errors.push({
+            message: "Email is not valid",
+            field: "email"
+        })
+    }
+
+    if (!password) {
+        errors.push({
+            message: "Password is required",
+            field: "password"
+        })
+    }
+
+    if (errors.length > 0) {
+        return res.status(400).json({
+            message: "Validation errors",
+            errors: errors
+        })
+    }
+
+    const user = await userModel.findOne({ email }).select("+passwordHash")
+
+    if (!user) {
+        return res.status(400).json({
+            message: "Invalid email or password",
+        })
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.passwordHash)
+
+    if (!isPasswordValid) {
+        return res.status(400).json({
+            message: "Invalid email or password",
+        })
+    }
+
+    const token = jwt.sign({
+        id: user._id,
+        role: user.role
+    }, config.JWT_SECRET)
+
+
+    res.status(200).json({
+        message: "User logged in successfully",
+        user: {
+            id: user._id,
+            name: user.name,
+            email: user.email
+        },
+        token
+    })
 
 }
