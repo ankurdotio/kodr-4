@@ -34,8 +34,18 @@ const productSchema = new mongoose.Schema({
     ],
     images: [
         {
-            type: String,
-            required: true,
+            imagekitId: {
+                type: String,
+                required: true
+            },
+            url: {
+                type: String,
+                required: true
+            },
+            order: {
+                type: Number,
+                required: true
+            }
         }
     ],
     seller: {
