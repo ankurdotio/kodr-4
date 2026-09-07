@@ -12,6 +12,7 @@ function requireVariable(name) {
 const config = {
     MONGO_URI: requireVariable("MONGO_URI"),
     JWT_SECRET: requireVariable("JWT_SECRET"),
+    IMAGEKIT_PRIVATE_KEY: requireVariable("IMAGEKIT_PRIVATE_KEY"),
 }
 
 export default config

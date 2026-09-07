@@ -1,5 +1,5 @@
 import productModel from "../models/product.model.js"
-
+import uploadFile from "../services/storage.service.js"
 
 export async function createProduct(req, res) {
 
@@ -115,5 +115,72 @@ export async function createProduct(req, res) {
             }
         })
     }
+
+    const files = req.files
+
+    if (!files || files.length === 0) {
+        errors.push({
+            field: "images",
+            message: "At least one image is required"
+        })
+    }
+
+    if (errors.length > 0) {
+        return res.status(400).json({
+            errors
+        })
+    }
+
+
+    // const urls = []
+
+    // for (let i = 0; i < files.length; i++) {
+
+    //     const file = files[ i ]
+    //     const fileName = `${Date.now()}-${file.originalname}`
+
+    //     const url = await uploadFile(file.buffer.toString("base64"), fileName)
+    //     urls.push(url)
+    // }
+
+    const urls = await Promise.all(req.files.map(async (file) => {
+
+        const fileName = `${Date.now()}-${file.originalname}`
+
+        const response = await uploadFile(file.buffer.toString("base64"), fileName)
+
+        return response.url
+
+    }))
+
+    const product = await productModel.create({
+        title,
+        description,
+        price: {
+            amount,
+            currency
+        },
+        categories,
+        images: urls,
+        seller: user.id,
+        sizes
+    })
+
+    return res.status(201).json({
+        message: "Product created successfully",
+        data: {
+            product: {
+                id: product._id,
+                title: product.title,
+                description: product.description,
+                price: product.price,
+                categories: product.categories,
+                images: product.images,
+                seller: product.seller,
+                sizes: product.sizes,
+                isPublished: product.isPublished
+            }
+        }
+    })
 
 }
