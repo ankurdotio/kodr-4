@@ -20,5 +20,5 @@ export async function uploadFile(file, fileName) {
         folder: "/snitch"
     })
 
-    return response.url
+    return response
 }
