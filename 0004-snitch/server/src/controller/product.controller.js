@@ -250,7 +250,6 @@ export async function togglePublishProduct(req, res) {
 export async function getProductsBySeller(req, res) {
     const user = req.user
 
-
     if (user.role !== "seller") {
         return res.status(403).json({
             message: "You are not authorized to view this seller's products"
@@ -273,6 +272,34 @@ export async function getProductsBySeller(req, res) {
         .skip(skip)
         .limit(5)
 
+
+    return res.status(200).json({
+        message: "Products retrieved successfully",
+        data: {
+            products: products,
+            totalPages: totalPages,
+            currentPage: page
+        }
+    })
+
+}
+
+export async function getProducts(req, res) {
+
+    const totalProducts = await productModel.countDocuments({
+        isPublished: true
+    })
+    const totalPages = Math.ceil(totalProducts / 20)
+
+    const page = req.query.page ? Math.min(parseInt(req.query.page), totalPages) : 1
+    const skip = (page - 1) * 20
+
+
+    const products = await productModel.find({
+        isPublished: true
+    })
+        .skip(skip)
+        .limit(20)
 
     return res.status(200).json({
         message: "Products retrieved successfully",

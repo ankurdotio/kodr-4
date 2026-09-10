@@ -1,6 +1,6 @@
 import { Router } from "express";
 import authenticate from "../middlewares/auth.middleware.js"
-import { createProduct, updateProduct, deleteImage, togglePublishProduct, getProductsBySeller } from "../controller/product.controller.js"
+import { createProduct, updateProduct, deleteImage, togglePublishProduct, getProductsBySeller, getProducts } from "../controller/product.controller.js"
 import { createProductValidator, updateProductValidator } from "../validator/product.validate.js"
 import multer from "multer"
 
@@ -41,6 +41,13 @@ router.post("/",
     createProductValidator,
     createProduct)
 
+
+/**
+ * @GET "/api/products"
+ */
+router.get("/",
+    getProducts
+)
 
 /**
  * @PATCH /api/products/update/:id
