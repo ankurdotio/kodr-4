@@ -157,3 +157,130 @@ export async function updateProduct(req, res) {
     })
 
 }
+
+export async function deleteImage(req, res) {
+
+    const user = req.user
+
+    if (user.role !== "seller") {
+        return res.status(403).json({
+            message: "You are not authorized to delete this image"
+        })
+    }
+
+
+    const { id, imageId } = req.params
+
+    const product = await productModel.findOne({
+        _id: id,
+    })
+
+    if (!product) {
+        return res.status(404).json({
+            message: "Product not found"
+        })
+    }
+
+    if (req.user.id !== product.seller.toString()) {
+        return res.status(403).json({
+            message: "You are not authorized to delete this image"
+        })
+    }
+
+    await productModel.findOneAndUpdate({
+        _id: id,
+    }, {
+        $pull: {
+            images: {
+                _id: imageId
+            }
+        }
+    })
+
+    return res.status(200).json({
+        message: "Image deleted successfully"
+    })
+
+}
+
+export async function togglePublishProduct(req, res) {
+    const user = req.user
+
+    if (user.role !== "seller") {
+        return res.status(403).json({
+            message: "You are not authorized to publish this product"
+        })
+    }
+
+    const product = await productModel.findOne({
+        _id: req.params.id,
+    })
+
+    if (!product) {
+        return res.status(404).json({
+            message: "Product not found"
+        })
+    }
+
+    if (user.id !== product.seller.toString()) {
+        return res.status(403).json({
+            message: "You are not authorized to publish this product"
+        })
+    }
+
+    await productModel.findOneAndUpdate({
+        _id: req.params.id,
+    }, {
+        isPublished: !product.isPublished
+    })
+
+    return res.status(200).json({
+        message: product.isPublished ?
+            "Product unpublished successfully" :
+            "Product published successfully",
+        data: {
+            product: {
+                id: product._id,
+                isPublished: !product.isPublished
+            }
+        }
+    })
+}
+
+export async function getProductsBySeller(req, res) {
+    const user = req.user
+
+
+    if (user.role !== "seller") {
+        return res.status(403).json({
+            message: "You are not authorized to view this seller's products"
+        })
+    }
+
+    const totalProducts = await productModel.countDocuments({
+        seller: user.id
+    })
+
+    const totalPages = Math.ceil(totalProducts / 5)
+
+    const page = req.query.page ? Math.min(parseInt(req.query.page), totalPages) : 1
+
+    const skip = (page - 1) * 5
+
+    const products = await productModel.find({
+        seller: user.id
+    })
+        .skip(skip)
+        .limit(5)
+
+
+    return res.status(200).json({
+        message: "Products retrieved successfully",
+        data: {
+            products: products,
+            totalPages: totalPages,
+            currentPage: page
+        }
+    })
+
+}

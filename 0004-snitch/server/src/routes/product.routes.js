@@ -1,6 +1,6 @@
 import { Router } from "express";
 import authenticate from "../middlewares/auth.middleware.js"
-import { createProduct, updateProduct } from "../controller/product.controller.js"
+import { createProduct, updateProduct, deleteImage, togglePublishProduct, getProductsBySeller } from "../controller/product.controller.js"
 import { createProductValidator, updateProductValidator } from "../validator/product.validate.js"
 import multer from "multer"
 
@@ -74,5 +74,26 @@ router.patch("/update/:id",
 /**
  * @DELETE /api/products/image/:id/:imageId
  */
+router.delete("/image/:id/:imageId",
+    authenticate,
+    deleteImage
+)
+
+/**
+ * @PATCH /api/products/publish/:id
+ */
+router.patch("/publish/:id",
+    authenticate,
+    togglePublishProduct
+)
+
+/**
+ * @GET /api/products/seller
+ */
+router.get("/seller",
+    authenticate,
+    getProductsBySeller
+)
+
 
 export default router;
