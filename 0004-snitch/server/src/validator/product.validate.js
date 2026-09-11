@@ -72,4 +72,5 @@ export const updateProductValidator = [
     body("sizes.*.stock")
         .notEmpty().withMessage("Quantity is required")
         .isInt({ min: 0 }).withMessage("Quantity must be a non-negative integer"),
+    validateRequest
 ]
