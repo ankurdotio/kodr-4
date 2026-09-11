@@ -1,5 +1,6 @@
 import orderModel from "../models/order.model.js"
 import cartModel from "../models/cart.model.js"
+import productModel from "../models/product.model.js"
 
 export const createOrder = async (req, res) => {
 
@@ -62,5 +63,54 @@ export const createOrder = async (req, res) => {
             errors: sizeErrors
         })
     }
+
+    await productModel.bulkWrite(
+        cart.products.map(product => {
+            return {
+                updateOne: {
+                    filter: {
+                        _id: product.product._id,
+                        "sizes.size": product.size
+                    },
+                    update: {
+                        $inc: {
+                            "sizes.$.stock": -product.quantity
+                        }
+                    }
+                }
+            }
+        })
+    )
+
+    const order = await orderModel.create({
+        user: user.id,
+        address: req.body.address,
+        products: cart.products.map(product => {
+            return {
+                product: {
+                    title: product.product.title,
+                    description: product.product.description,
+                    price: product.product.price,
+                    image: product.product.images[ 0 ],
+                    productId: product.product._id
+                },
+                quantity: product.quantity,
+                size: product.size
+            }
+        }),
+        totalPrice: {
+            amount: cart.products.reduce((total, product) => {
+                return total + product.product.price * product.quantity
+            }, 0),
+            currency: "INR"
+        }
+    })
+
+    return res.status(201).json({
+        message: "Order placed successfully",
+        data: {
+            order
+        }
+    })
 
 }
