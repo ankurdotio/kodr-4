@@ -14,3 +14,5 @@ export const addToCartValidator = [
     validateRequest
 
 ]
+
+export const removeFromCartValidator = addToCartValidator
