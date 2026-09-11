@@ -83,7 +83,7 @@ const orderSchema = new mongoose.Schema({
         enum: [ "PLACED", "CONFIRMED", "SHIPPED", "DELIVERED", "CANCELLED" ],
         default: "PLACED"
     }
-})
+}, { timestamps: true })
 
 const orderModel = mongoose.model("Order", orderSchema)
 

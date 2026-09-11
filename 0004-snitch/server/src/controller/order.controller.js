@@ -114,3 +114,127 @@ export const createOrder = async (req, res) => {
     })
 
 }
+
+export const getOrders = async (req, res) => {
+    const user = req.user
+
+
+    const orders = await orderModel.find({
+        user: user.id
+    }).sort({ createdAt: -1 })
+
+    return res.status(200).json({
+        message: "Orders retrieved successfully",
+        data: {
+            orders
+        }
+    })
+}
+
+export const cancelOrder = async (req, res) => {
+    const user = req.user
+    const { orderid } = req.params
+
+
+    const order = await orderModel.findOne({
+        _id: orderid
+    })
+
+    if (!order) {
+        return res.status(404).json({
+            message: "Order not found"
+        })
+    }
+
+    if (order.user.toString() !== user.id) {
+        return res.status(403).json({
+            message: "You are not authorized to cancel this order"
+        })
+    }
+
+    if (order.status == "CANCELLED") {
+        return res.status(400).json({
+            message: "Order is already cancelled"
+        })
+    }
+
+    if ([ "DELIVERED", "SHIPPED" ].includes(order.status)) {
+        return res.status(400).json({
+            message: "Order cannot be cancelled as it is already " + order.status.toLowerCase()
+        })
+    }
+
+    await orderModel.updateOne(
+        { _id: orderid },
+        { $set: { status: "CANCELLED" } }
+    )
+
+    return res.status(200).json({
+        message: "Order canceled Successfully"
+    })
+
+}
+
+export const updateOrderStatus = async (req, res) => {
+
+    const user = req.user
+
+    if (user.role !== "seller") {
+        return res.status(403).json({
+            message: "You are not authorized to update the order status"
+        })
+    }
+
+    const { status } = req.body
+    const orderid = req.params.orderid
+
+    const order = await orderModel.findOne({
+        _id: orderid
+    })
+
+    if (status == "PLACED") {
+
+        if ([ "CANCELLED", "DELIVERED", "SHIPPED" ].includes(order.status)) {
+            return res.status(400).json({
+                message: "Order status cannot be changed to PLACED as it is already " + order.status.toLowerCase()
+            })
+        }
+
+        await orderModel.updateOne(
+            { _id: orderid },
+            { $set: { status: "PLACED" } }
+        )
+    }
+
+    if (status == "SHIPPED") {
+        if ([ "CANCELLED", "DELIVERED" ].includes(order.status)) {
+            return res.status(400).json({
+                message: "Order status cannot be changed to SHIPPED as it is already " + order.status.toLowerCase()
+            })
+        }
+
+        await orderModel.updateOne(
+            { _id: orderid },
+            { $set: { status: "SHIPPED" } }
+        )
+    }
+
+    if (status == "DELIVERED") {
+        if ([ "CANCELLED" ].includes(order.status)) {
+            return res.status(400).json({
+                message: "Order status cannot be changed to DELIVERED as it is already " + order.status.toLowerCase()
+            })
+        }
+
+        await orderModel.updateOne(
+            { _id: orderid },
+            { $set: { status: "DELIVERED" } }
+        )
+    }
+
+    return res.status(200).json({
+        message: "Order status updated successfully"
+    })
+}
+
+
