@@ -1,7 +1,7 @@
 import { Router } from "express"
 import authenticate from "../middlewares/auth.middleware.js";
 import { addToCartValidator, removeFromCartValidator } from "../validator/cart.validator.js"
-import { addProductToCart, removeProductFromCart } from "../controller/cart.controller.js"
+import { addProductToCart, removeProductFromCart, getCart } from "../controller/cart.controller.js"
 
 
 const router = Router()
@@ -23,6 +23,6 @@ router.delete("/remove/product/:productId", removeFromCartValidator, removeProdu
 /**
  * @GET /api/cart
  */
-router.get("/",)
+router.get("/", getCart)
 
 export default router;

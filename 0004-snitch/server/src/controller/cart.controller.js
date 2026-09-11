@@ -39,12 +39,13 @@ export const addProductToCart = async (req, res) => {
         }
 
         await cartModel.findOneAndUpdate({
-            user: req.user.id,
-            arrayFilters: [ { "elem.product": productId, "elem.size": productSize } ]
+            user: req.user.id
         }, {
             $set: {
                 "products.$[elem].quantity": totalQuantity
             }
+        }, {
+            arrayFilters: [ { "elem.product": productId, "elem.size": productSize } ]
         })
 
 
@@ -95,8 +96,7 @@ export const removeProductFromCart = async (req, res) => {
     if (productInCart.quantity <= quantity) {
 
         await cartModel.findOneAndUpdate({
-            user: req.user.id,
-            arrayFilters: [ { "elem.product": productId, "elem.size": productSize } ]
+            user: req.user.id
         }, {
             $pull: {
                 products: {
@@ -111,12 +111,13 @@ export const removeProductFromCart = async (req, res) => {
         const newQuantity = productInCart.quantity - quantity;
 
         await cartModel.findOneAndUpdate({
-            user: req.user.id,
-            arrayFilters: [ { "elem.product": productId, "elem.size": productSize } ]
+            user: req.user.id
         }, {
             $set: {
                 "products.$[elem].quantity": newQuantity
             }
+        }, {
+            arrayFilters: [ { "elem.product": productId, "elem.size": productSize } ]
         });
 
     }

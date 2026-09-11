@@ -91,7 +91,7 @@ export const createOrder = async (req, res) => {
                     title: product.product.title,
                     description: product.product.description,
                     price: product.product.price,
-                    image: product.product.images[ 0 ],
+                    image: product.product.images[ 0 ]?.url ?? "",
                     productId: product.product._id
                 },
                 quantity: product.quantity,
@@ -100,7 +100,7 @@ export const createOrder = async (req, res) => {
         }),
         totalPrice: {
             amount: cart.products.reduce((total, product) => {
-                return total + product.product.price * product.quantity
+                return total + product.product.price.amount * product.quantity
             }, 0),
             currency: "INR"
         }

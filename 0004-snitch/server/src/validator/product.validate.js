@@ -10,7 +10,7 @@ export const createProductValidator = [
     body("description")
         .trim()
         .notEmpty().withMessage("Description is required")
-        .isLength({ min: 50, max: 1000 }).withMessage("Description must be between 10 and 1000 characters"),
+        .isLength({ min: 10, max: 1000 }).withMessage("Description must be between 10 and 1000 characters"),
     body("price.amount")
         .notEmpty().withMessage("Price amount is required")
         .isFloat({ min: 0 }).withMessage("Price amount must be a positive number"),
@@ -45,7 +45,7 @@ export const updateProductValidator = [
         .optional()
         .trim()
         .notEmpty().withMessage("Description is required")
-        .isLength({ min: 50, max: 1000 }).withMessage("Description must be between 10 and 1000 characters"),
+        .isLength({ min: 10, max: 1000 }).withMessage("Description must be between 10 and 1000 characters"),
     body("price.amount")
         .optional()
         .notEmpty().withMessage("Price amount is required")

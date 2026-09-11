@@ -294,7 +294,6 @@ export async function getProducts(req, res) {
     const page = req.query.page ? Math.min(parseInt(req.query.page), totalPages) : 1
     const skip = (page - 1) * 20
 
-
     const products = await productModel.find({
         isPublished: true
     })
