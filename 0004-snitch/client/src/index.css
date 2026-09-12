@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-canvas text-ink;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  ::selection {
+    background-color: #C9B79C;
+    color: #1C1917;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F7F3EE;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #E4DCD2;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #C9B79C;
+}
