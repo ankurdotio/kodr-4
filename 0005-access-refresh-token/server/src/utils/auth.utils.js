@@ -17,3 +17,13 @@ export function generateTokens(userId) {
         refreshToken
     }
 }
+
+
+/**
+ * @description Verifies the validity of a given refresh token.
+ * @param {string} refreshToken - The refresh token to verify.
+ * @returns {Object} The decoded payload if the token is valid, otherwise throws an error.
+ */
+export function verifyRefreshToken(refreshToken) {
+    return jwt.verify(refreshToken, config.REFRESH_TOKEN_SECRET)
+}

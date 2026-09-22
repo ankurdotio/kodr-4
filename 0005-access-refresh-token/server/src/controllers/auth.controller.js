@@ -1,7 +1,7 @@
 import userModel from "../models/user.model.js"
 import sessionModel from "../models/session.model.js"
 import bcrypt from "bcryptjs"
-import { generateTokens } from "../utils/auth.utils.js"
+import { generateTokens, verifyRefreshToken } from "../utils/auth.utils.js"
 
 
 export async function register(req, res) {
@@ -88,4 +88,67 @@ export async function login(req, res) {
         }
     })
 
+}
+
+export async function refresh(req, res) {
+    const { refreshToken } = req.cookies;
+
+    if (!refreshToken) {
+        return res.status(401).json({
+            message: "Refresh token not provided"
+        });
+    }
+
+    try {
+        const decoded = verifyRefreshToken(refreshToken)
+
+        const { userId } = decoded
+
+        const session = await sessionModel.findOne({
+            userId: userId
+        })
+
+        if (!session) {
+            return res.status(401).json({
+                message: "Invalid refresh token"
+            })
+        }
+
+        const isRefreshTokenValid = await bcrypt.compare(refreshToken, session.refreshTokenHash)
+
+        if (!isRefreshTokenValid) {
+
+            await sessionModel.deleteMany({ userId: userId })
+
+            return res.status(401).json({
+                message: "Invalid refresh token"
+            })
+        }
+
+
+        const tokens = generateTokens(userId)
+
+        await sessionModel.findOneAndUpdate(
+            { userId: userId },
+            { refreshTokenHash: await bcrypt.hash(tokens.refreshToken, 12) },
+            { upsert: true }
+        )
+
+        res.cookie("refreshToken", tokens.refreshToken, {
+            httpOnly: true,
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days in milliseconds
+        })
+
+        res.status(200).json({
+            message: "Token refreshed successfully",
+            data: {
+                accessToken: tokens.accessToken
+            }
+        })
+
+    } catch (err) {
+        return res.status(401).json({
+            message: "Invalid refresh token"
+        })
+    }
 }
