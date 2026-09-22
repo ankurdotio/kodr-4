@@ -1,5 +1,6 @@
 import { body, validationResult } from "express-validator"
 import userModel from "../models/user.model.js"
+import { validate } from "../utils/validator.utils.js"
 
 
 export const registerValidator = [
@@ -22,20 +23,19 @@ export const registerValidator = [
         .exists().withMessage("Password is required").bail()
         .isString().withMessage("Password must be a string").bail()
         .isLength({ min: 6 }).withMessage("Password must be at least 6 characters long"),
-    (req, res, next) => {
+    validate
+]
 
-        const errors = validationResult(req);
 
-        if (!errors.isEmpty()) {
-            return res.status(400).json({
-                message: "invalid input",
-                errors: errors.array()
-            })
-        }
-
-        next();
-
-    }
+export const loginValidator = [
+    body("email")
+        .exists().withMessage("Email is required").bail()
+        .isEmail().withMessage("Email must be a valid email address"),
+    body("password")
+        .exists().withMessage("Password is required").bail()
+        .isString().withMessage("Password must be a string").bail()
+        .isLength({ min: 6 }).withMessage("Password must be at least 6 characters long"),
+    validate
 ]
 
 
