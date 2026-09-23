@@ -40,7 +40,6 @@ export async function register(req, res) {
 
 }
 
-
 export async function login(req, res) {
 
     const { email, password } = req.body;
@@ -66,7 +65,7 @@ export async function login(req, res) {
     const tokens = generateTokens(user._id)
 
     await sessionModel.findOneAndUpdate(
-        { userId: user._id },
+        { user: user._id },
         { refreshTokenHash: await bcrypt.hash(tokens.refreshToken, 12) },
         { upsert: true }
     )
@@ -105,7 +104,7 @@ export async function refresh(req, res) {
         const { userId } = decoded
 
         const session = await sessionModel.findOne({
-            userId: userId
+            user: userId
         })
 
         if (!session) {
@@ -118,7 +117,7 @@ export async function refresh(req, res) {
 
         if (!isRefreshTokenValid) {
 
-            await sessionModel.deleteMany({ userId: userId })
+            await sessionModel.deleteMany({ user: userId })
 
             return res.status(401).json({
                 message: "Invalid refresh token"
@@ -129,7 +128,7 @@ export async function refresh(req, res) {
         const tokens = generateTokens(userId)
 
         await sessionModel.findOneAndUpdate(
-            { userId: userId },
+            { user: userId },
             { refreshTokenHash: await bcrypt.hash(tokens.refreshToken, 12) },
             { upsert: true }
         )
