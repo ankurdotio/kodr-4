@@ -27,3 +27,13 @@ export function generateTokens(userId) {
 export function verifyRefreshToken(refreshToken) {
     return jwt.verify(refreshToken, config.REFRESH_TOKEN_SECRET)
 }
+
+
+/**
+ * @description Verifies the validity of a given access token.
+ * @param {string} accessToken - The access token to verify.
+ * @returns {Object} The decoded payload if the token is valid, otherwise throws an error.
+ */
+export function verifyAccessToken(accessToken) {
+    return jwt.verify(accessToken, config.ACCESS_TOKEN_SECRET)
+}

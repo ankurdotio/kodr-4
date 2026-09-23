@@ -1,6 +1,6 @@
 import { Router } from "express"
 import { registerValidator, loginValidator } from "../validator/auth.validator.js"
-import { register, login } from "../controllers/auth.controller.js"
+import { register, login, getCurrentUser, refresh } from "../controllers/auth.controller.js"
 
 
 const router = Router()
@@ -29,6 +29,15 @@ router.post("/login", loginValidator, login)
  * @route /api/auth/refresh
  */
 router.post("/refresh", refresh)
+
+
+/**
+ * @method GET
+ * @route /api/auth/me
+ * @desc Get the currently logged-in user's information
+ * @access Private
+ */
+router.get("/me", getCurrentUser)
 
 
 export default router

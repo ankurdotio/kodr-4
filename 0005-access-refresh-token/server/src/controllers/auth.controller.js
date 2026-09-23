@@ -1,7 +1,7 @@
 import userModel from "../models/user.model.js"
 import sessionModel from "../models/session.model.js"
 import bcrypt from "bcryptjs"
-import { generateTokens, verifyRefreshToken } from "../utils/auth.utils.js"
+import { generateTokens, verifyRefreshToken, verifyAccessToken } from "../utils/auth.utils.js"
 
 
 export async function register(req, res) {
@@ -150,4 +150,39 @@ export async function refresh(req, res) {
             message: "Invalid refresh token"
         })
     }
+}
+
+
+export async function getCurrentUser(req, res) {
+
+    const accessToken = req.headers.authorization?.split(" ")[ 1 ]
+
+    if (!accessToken) {
+        return res.status(401).json({
+            message: "Access token not provided"
+        });
+    }
+
+    try {
+
+        const decoded = verifyAccessToken(accessToken)
+
+        const user = await userModel.findById(decoded.userId)
+
+        res.status(200).json({
+            message: "User details retrieved successfully",
+            data: {
+                user: {
+                    email: user.email,
+                    name: user.name
+                }
+            }
+        })
+
+    } catch (err) {
+        return res.status(401).json({
+            message: "Invalid access token"
+        });
+    }
+
 }
