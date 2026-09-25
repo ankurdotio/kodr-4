@@ -9,15 +9,15 @@ import { AppError } from "../utils/AppError.js";
  * @throws {AppError} 422 with field-level validation errors.
  */
 export function validate(req, _res, next) {
-  const result = validationResult(req);
-  if (result.isEmpty()) {
-    return next();
-  }
+    const result = validationResult(req);
+    if (result.isEmpty()) {
+        return next();
+    }
 
-  const fieldErrors = result.array().map((err) => ({
-    field: "path" in err ? String(err.path) : "unknown",
-    message: err.msg,
-  }));
+    const fieldErrors = result.array().map((err) => ({
+        field: "path" in err ? String(err.path) : "unknown",
+        message: err.msg,
+    }));
 
-  next(new AppError(422, "Validation failed", fieldErrors));
+    next(new AppError(422, "Validation failed", fieldErrors));
 }

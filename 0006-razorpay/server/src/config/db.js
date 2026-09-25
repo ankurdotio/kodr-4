@@ -6,6 +6,6 @@ import { env } from "./env.js";
  * @returns {Promise<void>}
  */
 export async function connectDB() {
-  await mongoose.connect(env.mongodbUri);
-  console.log("MongoDB connected");
+    await mongoose.connect(env.mongodbUri);
+    console.log("MongoDB connected");
 }

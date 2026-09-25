@@ -6,5 +6,5 @@
  * @param {unknown} data - The response payload.
  */
 export function sendSuccess(res, statusCode, message, data) {
-  res.status(statusCode).json({ success: true, message, data });
+    res.status(statusCode).json({ success: true, message, data });
 }

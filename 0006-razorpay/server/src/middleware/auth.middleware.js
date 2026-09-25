@@ -8,19 +8,19 @@ import { asyncHandler } from "../utils/asyncHandler.js";
  * @throws {AppError} 401 if the header is missing, the token is invalid, or the user no longer exists.
  */
 export const requireAuth = asyncHandler(async (req, _res, next) => {
-  const header = req.headers.authorization;
-  if (!header || !header.startsWith("Bearer ")) {
-    throw new AppError(401, "Authentication required", []);
-  }
+    const header = req.headers.authorization;
+    if (!header || !header.startsWith("Bearer ")) {
+        throw new AppError(401, "Authentication required", []);
+    }
 
-  const token = header.slice("Bearer ".length);
-  const payload = verifyAccessToken(token);
+    const token = header.slice("Bearer ".length);
+    const payload = verifyAccessToken(token);
 
-  const user = await findUserById(payload.id);
-  if (!user) {
-    throw new AppError(401, "Authentication required", []);
-  }
+    const user = await findUserById(payload.id);
+    if (!user) {
+        throw new AppError(401, "Authentication required", []);
+    }
 
-  req.user = user;
-  next();
+    req.user = user;
+    next();
 });

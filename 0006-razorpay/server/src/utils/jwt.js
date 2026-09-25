@@ -7,7 +7,7 @@ import { env } from "../config/env.js";
  * @returns {string} The signed JWT access token, expiring in 15 minutes.
  */
 export function signAccessToken(payload) {
-  return jwt.sign(payload, env.accessTokenSecret, { expiresIn: "15m" });
+    return jwt.sign(payload, env.accessTokenSecret, { expiresIn: "15m" });
 }
 
 /**
@@ -16,7 +16,7 @@ export function signAccessToken(payload) {
  * @returns {string} The signed JWT refresh token, expiring in 7 days.
  */
 export function signRefreshToken(payload) {
-  return jwt.sign(payload, env.refreshTokenSecret, { expiresIn: "7d" });
+    return jwt.sign(payload, env.refreshTokenSecret, { expiresIn: "7d" });
 }
 
 /**
@@ -26,7 +26,7 @@ export function signRefreshToken(payload) {
  * @throws {Error} If the token is invalid or expired.
  */
 export function verifyAccessToken(token) {
-  return jwt.verify(token, env.accessTokenSecret);
+    return jwt.verify(token, env.accessTokenSecret);
 }
 
 /**
@@ -36,5 +36,5 @@ export function verifyAccessToken(token) {
  * @throws {Error} If the token is invalid or expired.
  */
 export function verifyRefreshToken(token) {
-  return jwt.verify(token, env.refreshTokenSecret);
+    return jwt.verify(token, env.refreshTokenSecret);
 }
