@@ -6,9 +6,6 @@ import { useDispatch } from 'react-redux';
 import { setUser, setAccessToken } from "../state/auth.slice"
 
 
-
-
-
 const Me = () => {
 
     const user = useSelector((state) => state.auth.user);
@@ -26,7 +23,7 @@ const Me = () => {
             return config;
         }
     )
-
+    
     api.interceptors.response.use(
         res => res,
         async (error) => {
@@ -42,7 +39,7 @@ const Me = () => {
 
                 return axios(error.config)
             }
-
+            return Promise.reject(error);
         }
     )
 
