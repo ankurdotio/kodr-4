@@ -35,6 +35,16 @@ export const registerValidator = [
         .withMessage("Password must contain a letter")
         .matches(/\d/)
         .withMessage("Password must contain a number"),
+    body("coffeePrice")
+        .exists()
+        .withMessage("Coffee price is required")
+        .isInt({ min: 20, max: 500 })
+        .withMessage("Coffee price must be between 20 and 500"),
+    body("bio")
+        .optional()
+        .trim()
+        .isLength({ max: 160 })
+        .withMessage("Bio must be at most 160 characters"),
 ];
 
 /**

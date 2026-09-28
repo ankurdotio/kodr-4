@@ -22,8 +22,21 @@ const userSchema = new mongoose.Schema(
             trim: true,
             index: true,
         },
-        password: { type: String, required: true, minlength: 8, select: false },
-        refreshToken: { type: String, default: null, select: false },
+        bio: {
+            type: String,
+            maxlength: 160,
+        },
+        avatarUrl: {
+            type: String,
+            default: "https://ik.imagekit.io/hnoglyswo0/user-avatar.webp"
+        },
+        coffeePrice: {
+            type: Number,
+            min: 2000,
+            max: 50000,
+            default: 5000,
+        },
+        password: { type: String, required: true, minlength: 8, select: false }
     },
     { timestamps: true },
 );

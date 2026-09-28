@@ -3,8 +3,8 @@ import {
     createUser,
     findUserByEmail,
     findUserByIdWithRefreshToken,
-    updateRefreshToken,
 } from "../DAO/user.dao.js";
+import { updateRefreshToken } from "../DAO/session.dao.js";
 import { env } from "../config/env.js";
 import { AppError } from "../utils/AppError.js";
 import { sendSuccess } from "../utils/apiResponse.js";
@@ -70,8 +70,8 @@ function setRefreshCookie(res, token) {
  * @throws {AppError} 409 via error middleware when email or username is taken.
  */
 export const register = asyncHandler(async (req, res) => {
-    const { name, username, email, password } = req.body;
-    const user = await createUser({ name, username, email, password });
+    const { name, username, email, password, coffeePrice, bio } = req.body;
+    const user = await createUser({ name, username, email, password, coffeePrice: coffeePrice * 100, bio });
     const { accessToken, refreshToken } = await issueTokens(user);
 
     setRefreshCookie(res, refreshToken);
