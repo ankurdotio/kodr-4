@@ -1,10 +1,10 @@
 import {
-    clearRefreshToken,
     createUser,
     findUserByEmail,
     findUserByIdWithRefreshToken,
 } from "../DAO/user.dao.js";
-import { updateRefreshToken } from "../DAO/session.dao.js";
+import { updateRefreshToken, clearRefreshToken } from "../DAO/session.dao.js";
+import { getSessionByToken } from "../DAO/session.dao.js"
 import { env } from "../config/env.js";
 import { AppError } from "../utils/AppError.js";
 import { sendSuccess } from "../utils/apiResponse.js";
@@ -110,8 +110,8 @@ export const refresh = asyncHandler(async (req, res) => {
 
     const payload = verifyRefreshToken(token);
     const user = await findUserByIdWithRefreshToken(payload.id);
-    if (!user || !user.refreshToken || user.refreshToken !== token) {
-        if (user) await clearRefreshToken(user._id.toString());
+    const session = await getSessionByToken(token);
+    if (!user || !session) {
         res.clearCookie(REFRESH_COOKIE, refreshCookieOptions);
         throw new AppError(401, "Invalid refresh token");
     }
@@ -129,7 +129,7 @@ export const logout = asyncHandler(async (req, res) => {
     if (token) {
         try {
             const payload = verifyRefreshToken(token);
-            await clearRefreshToken(payload.id);
+            await clearRefreshToken(token);
         } catch {
             // Invalid/expired cookie: nothing to revoke, still clear it.
         }

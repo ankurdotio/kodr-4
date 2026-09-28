@@ -38,14 +38,3 @@ export async function findUserById(id) {
 export async function findUserByIdWithRefreshToken(id) {
     return UserModel.findById(id).select("+refreshToken");
 }
-
-
-
-/**
- * Clears the stored refresh token for the user.
- * @param {string} id
- * @returns {Promise<User | null>}
- */
-export async function clearRefreshToken(id) {
-    return UserModel.findByIdAndUpdate(id, { refreshToken: null }, { new: true });
-}
