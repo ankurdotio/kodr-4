@@ -8,17 +8,17 @@ import { verifyAccessToken } from "../utils/jwt.js";
  * @throws {AppError} 401 when the token is missing or the user no longer exists.
  */
 export const requireAuth = asyncHandler(async (req, _res, next) => {
-  const header = req.headers.authorization;
-  if (!header?.startsWith("Bearer ")) {
-    throw new AppError(401, "Authentication required");
-  }
+    const header = req.headers.authorization;
+    if (!header?.startsWith("Bearer ")) {
+        throw new AppError(401, "Authentication required");
+    }
 
-  const payload = verifyAccessToken(header.slice(7));
-  const user = await findUserById(payload.id);
-  if (!user) {
-    throw new AppError(401, "Authentication required");
-  }
+    const payload = verifyAccessToken(header.slice(7));
+    const user = await findUserById(payload.id);
+    if (!user) {
+        throw new AppError(401, "Authentication required");
+    }
 
-  req.user = user;
-  next();
+    req.user = user;
+    next();
 });

@@ -9,7 +9,7 @@ import { UserModel } from "../models/user.model.js";
  * @returns {Promise<User>}
  */
 export async function createUser(input) {
-  return UserModel.create(input);
+    return UserModel.create(input);
 }
 
 /**
@@ -18,7 +18,7 @@ export async function createUser(input) {
  * @returns {Promise<User | null>}
  */
 export async function findUserByEmail(email) {
-  return UserModel.findOne({ email: email.toLowerCase() }).select("+password");
+    return UserModel.findOne({ email: email.toLowerCase() }).select("+password");
 }
 
 /**
@@ -27,7 +27,7 @@ export async function findUserByEmail(email) {
  * @returns {Promise<User | null>}
  */
 export async function findUserById(id) {
-  return UserModel.findById(id);
+    return UserModel.findById(id);
 }
 
 /**
@@ -36,7 +36,7 @@ export async function findUserById(id) {
  * @returns {Promise<User | null>}
  */
 export async function findUserByIdWithRefreshToken(id) {
-  return UserModel.findById(id).select("+refreshToken");
+    return UserModel.findById(id).select("+refreshToken");
 }
 
 /**
@@ -46,7 +46,7 @@ export async function findUserByIdWithRefreshToken(id) {
  * @returns {Promise<User | null>}
  */
 export async function updateRefreshToken(id, refreshToken) {
-  return UserModel.findByIdAndUpdate(id, { refreshToken }, { new: true });
+    return UserModel.findByIdAndUpdate(id, { refreshToken }, { new: true });
 }
 
 /**
@@ -55,5 +55,5 @@ export async function updateRefreshToken(id, refreshToken) {
  * @returns {Promise<User | null>}
  */
 export async function clearRefreshToken(id) {
-  return UserModel.findByIdAndUpdate(id, { refreshToken: null }, { new: true });
+    return UserModel.findByIdAndUpdate(id, { refreshToken: null }, { new: true });
 }

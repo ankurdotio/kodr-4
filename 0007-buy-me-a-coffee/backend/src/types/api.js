@@ -17,4 +17,4 @@
  * @property {string} [stack]
  */
 
-export {};
+export { };

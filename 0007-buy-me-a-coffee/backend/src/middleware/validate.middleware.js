@@ -10,12 +10,12 @@ import { AppError } from "../utils/AppError.js";
  * @throws {AppError} 422 when validation fails.
  */
 export function validate(req, _res, next) {
-  const result = validationResult(req);
-  if (result.isEmpty()) return next();
+    const result = validationResult(req);
+    if (result.isEmpty()) return next();
 
-  const fieldErrors = result.array().map((err) => ({
-    field: err.type === "field" ? err.path : err.type,
-    message: String(err.msg),
-  }));
-  throw new AppError(422, "Validation failed", fieldErrors);
+    const fieldErrors = result.array().map((err) => ({
+        field: err.type === "field" ? err.path : err.type,
+        message: String(err.msg),
+    }));
+    throw new AppError(422, "Validation failed", fieldErrors);
 }

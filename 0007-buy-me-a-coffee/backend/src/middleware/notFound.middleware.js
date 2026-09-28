@@ -5,5 +5,5 @@ import { AppError } from "../utils/AppError.js";
  * @throws {AppError}
  */
 export function notFound() {
-  throw new AppError(404, "Route not found");
+    throw new AppError(404, "Route not found");
 }

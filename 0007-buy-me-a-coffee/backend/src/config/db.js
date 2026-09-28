@@ -7,6 +7,6 @@ import { env } from "./env.js";
  * @throws {Error} When the connection cannot be established.
  */
 export async function connectDB() {
-  await mongoose.connect(env.MONGODB_URI);
-  console.log(`MongoDB connected: ${mongoose.connection.host}`);
+    await mongoose.connect(env.MONGODB_URI);
+    console.log(`MongoDB connected: ${mongoose.connection.host}`);
 }

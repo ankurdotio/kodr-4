@@ -35,4 +35,4 @@
  * @property {string} refreshToken
  */
 
-export {};
+export { };

@@ -7,7 +7,7 @@
  * @returns {import("express").Response}
  */
 export function sendSuccess(res, statusCode, message, data = {}) {
-  /** @type {import("../types/api.js").ApiSuccess} */
-  const body = { success: true, message, data: data ?? null };
-  return res.status(statusCode).json(body);
+    /** @type {import("../types/api.js").ApiSuccess} */
+    const body = { success: true, message, data: data ?? null };
+    return res.status(statusCode).json(body);
 }
