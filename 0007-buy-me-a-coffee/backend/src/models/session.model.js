@@ -14,23 +14,19 @@ const sessionSchema = new mongoose.Schema({
     expiresAt: {
         type: Date,
         required: true,
+        default: () => new Date(Date.now() + 1000 * 60 * 60 * 24 * 7), // default to 7 days from now
     }
 }, { timestamps: true })
 
-
-// perform sha512 for refresh token hashing
-sessionSchema.pre("save", function () {
-    if (this.isModified("tokenHash")) {
-        this.tokenHash = crypto.createHash("sha512").update(this.tokenHash).digest("hex");
-    }
-});
-
-sessionSchema.pre("findOneAndUpdate", function () {
-    const update = this.getUpdate();
+function hashTokenAndUpdateExpiry() {
+    const update = this.getUpdate ? this.getUpdate() : this;
     if (update.tokenHash) {
         update.tokenHash = crypto.createHash("sha512").update(update.tokenHash).digest("hex");
     }
-    this.expiresAt = new Date();
-});
+}
+
+// perform sha512 for refresh token hashing
+sessionSchema.pre("save", hashTokenAndUpdateExpiry);
+sessionSchema.pre("findOneAndUpdate", hashTokenAndUpdateExpiry);
 
 export const sessionModel = mongoose.model("Session", sessionSchema);
