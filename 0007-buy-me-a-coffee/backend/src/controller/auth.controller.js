@@ -1,7 +1,7 @@
 import {
     createUser,
     findUserByEmail,
-    findUserByIdWithRefreshToken,
+    findUserById,
 } from "../DAO/user.dao.js";
 import { updateRefreshToken, clearRefreshToken } from "../DAO/session.dao.js";
 import { getSessionByToken } from "../DAO/session.dao.js"
@@ -109,8 +109,15 @@ export const refresh = asyncHandler(async (req, res) => {
     if (!token) throw new AppError(401, "Refresh token missing");
 
     const payload = verifyRefreshToken(token);
-    const user = await findUserByIdWithRefreshToken(payload.id);
+
+    console.log(payload);
+    
+    const user = await findUserById(payload.id);
     const session = await getSessionByToken(token);
+
+    console.log(user);
+    console.log(session);
+    
     if (!user || !session) {
         res.clearCookie(REFRESH_COOKIE, refreshCookieOptions);
         throw new AppError(401, "Invalid refresh token");

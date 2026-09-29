@@ -1,5 +1,5 @@
 import { sessionModel } from "../models/session.model.js";
-
+import crypto from "crypto";
 
 
 
@@ -9,7 +9,7 @@ import { sessionModel } from "../models/session.model.js";
  * @returns {Promise<Session | null>}
  */
 export async function getSessionByToken(token) {
-    const tokenHash = require("crypto").createHash("sha512").update(token).digest("hex");
+    const tokenHash = crypto.createHash("sha512").update(token).digest("hex");
     return await sessionModel.findOne({
         tokenHash: tokenHash,
     });
