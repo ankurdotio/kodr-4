@@ -16,7 +16,9 @@ const userSchema = new mongoose.Schema({
     },
     passwordHash: {
         type: String,
-        required: true,
+        required: function () {
+            return !this.providerId;
+        },
         select: false
     },
     role: {
@@ -24,6 +26,14 @@ const userSchema = new mongoose.Schema({
         required: true,
         default: "user",
         enum: [ "user", "seller" ]
+    },
+    provider: {
+        type: String,
+        enum: [ "local", "google", "github", "linkedin" ],
+        required: true
+    },
+    providerId: {
+        type: String,
     }
 })
 
