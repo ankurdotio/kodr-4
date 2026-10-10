@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E‑Commerce Store</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Hero Section Styles */
+        .hero {
+            position: relative;
+            width: 100%;
+            min-height: 70vh;
+            background: url('hero-bg.jpg') center/cover no-repeat;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            text-align: center;
+            padding: 2rem;
+        }
+        .hero::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5); /* dark overlay for readability */
+            z-index: 0;
+        }
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 800px;
+        }
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+        }
+        .hero p {
+            font-size: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+        .hero .cta-btn {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            background-color: #ff6f61;
+            color: #fff;
+            text-decoration: none;
+            font-weight: bold;
+            border-radius: 4px;
+            transition: background-color 0.3s ease;
+        }
+        .hero .cta-btn:hover {
+            background-color: #e65b50;
+        }
+        @media (max-width: 768px) {
+            .hero h1 {font-size: 2.2rem;}
+            .hero p {font-size: 1rem;}
+        }
+    </style>
+</head>
+<body>
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1>Discover the Latest Trends</h1>
+            <p>Shop the newest collections of fashion, electronics, and home goods—all at unbeatable prices.</p>
+            <a href="/shop" class="cta-btn">Start Shopping</a>
+        </div>
+    </section>
+</body>
+</html>
