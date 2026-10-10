@@ -1,19 +1,40 @@
 import { config } from 'dotenv';
 import { ChatGoogle } from "@langchain/google"
+import { HumanMessage, AIMessage } from "langchain"
+import { ChatGroq } from "@langchain/groq"
+import { createInterface } from "readline/promises"
 
 config();
 
-
-const model = new ChatGoogle({
-    apiKey: process.env.GEMINI_API_KEY,
-    model: "gemini-3.8-flash"
+const model = new ChatGroq({
+    apiKey: process.env.GROQ_API_KEY,
+    model: "qwen/qwen3.8-27b"
 })
 
+const rl = createInterface({
+    input: process.stdin,
+    output: process.stdout
+})
 
-const stream = await model.stream([
-    { role: "user", content: "write an essay on js." }
-])
+const messages = []
 
-for await (const chunk of stream) {
-    console.log(chunk.text)
+while (true) {
+    // –––––––––––––––– take user input –––––––––––––––––––
+    const prompt = await rl.question("Enter your prompt: ")
+
+
+    messages.push(new HumanMessage(prompt))
+
+    // –––––––––––––––– send user input to model and get stream –––––––––––––––––––
+    const stream = await model.stream(messages)
+
+    let aiMessage = ""
+    // –––––––––––––––– read and display the stream –––––––––––––––––––
+    for await (const chunk of stream) {
+        process.stdout.write(chunk.text)
+        aiMessage += chunk.text
+    }
+    process.stdout.write("\n")
+
+    messages.push(new AIMessage(aiMessage))
 }
