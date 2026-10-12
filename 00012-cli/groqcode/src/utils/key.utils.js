@@ -65,3 +65,19 @@ export async function saveApiKey(apiKey) {
     settings.GROQ_API_KEY = apiKey;
     await fs.writeFile(settingFilePath, JSON.stringify(settings, null, 4), "utf-8");
 }
+
+// get the GROQ API key from settings.json
+export async function getAPIKey() {
+    if (!(await checkSettingsFile())) {
+        throw new Error("Settings file not found");
+    }
+
+    if (!(await checkApiKey())) {
+        throw new Error("GROQ API key not found");
+    }
+
+    const settingFilePath = `${CONFIG_DIR}/settings.json`;
+    const settingsContent = await fs.readFile(settingFilePath, "utf-8");
+    const settings = JSON.parse(settingsContent);
+    return settings.GROQ_API_KEY;
+}

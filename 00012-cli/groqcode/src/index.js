@@ -1,5 +1,7 @@
 import { checkApiKey, saveApiKey } from "./utils/key.utils.js";
 import readline from "readline/promises"
+import graph from "./agent/graph/main.graph.js"
+import { HumanMessage } from "langchain"
 
 const rl = readline.createInterface({
     input: process.stdin,
@@ -15,5 +17,14 @@ export async function main(args) {
         await saveApiKey(apiKey);
 
     }
+
+    const prompt = await rl.question("Please enter your prompt: ");
+
+    const response = await graph.invoke({
+        messages: [ new HumanMessage(prompt) ],
+        count: 1
+    })
+
+    console.log(response);
 
 }
