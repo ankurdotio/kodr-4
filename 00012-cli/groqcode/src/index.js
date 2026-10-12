@@ -1,7 +1,7 @@
-import { checkApiKey, saveApiKey } from "./utils/key.utils.js";
+import { checkApiKey, saveApiKey, getAPIKey } from "./utils/key.utils.js";
 import readline from "readline/promises"
-import graph from "./agent/graph/main.graph.js"
-import { HumanMessage } from "langchain"
+import initiateGraph from "./agent/graph/main.graph.js"
+import { HumanMessage, SystemMessage } from "langchain"
 
 const rl = readline.createInterface({
     input: process.stdin,
@@ -17,11 +17,15 @@ export async function main(args) {
         await saveApiKey(apiKey);
 
     }
+    const graph = await initiateGraph(await getAPIKey())
 
     const prompt = await rl.question("Please enter your prompt: ");
 
     const response = await graph.invoke({
-        messages: [ new HumanMessage(prompt) ],
+        messages: [
+            new SystemMessage("You must use the tools available to you. for performing the user's tasks."),
+            new HumanMessage(prompt)
+        ],
         count: 1
     })
 
