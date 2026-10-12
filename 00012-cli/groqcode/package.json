@@ -1,0 +1,22 @@
+{
+  "name": "groqcode",
+  "version": "0.1.0",
+  "description": "",
+  "bin": {
+    "groqcode": "./bin/groqcode.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "files": [
+    "bin",
+    "src"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}

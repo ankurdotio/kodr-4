@@ -5,8 +5,24 @@ import { ChatGroq } from "@langchain/groq"
 import { createInterface } from "readline/promises"
 import fs from "fs/promises"
 import * as z from "zod"
+import { ChatOpenAI } from "@langchain/openai";
 
 config();
+
+
+
+const zlm = new ChatOpenAI({
+    model: "glm-4.7-flash",
+    apiKey: process.env.ZAI_API_KEY,
+    configuration: { baseURL: "https://api.z.ai/api/paas/v4/" },
+});
+
+const nvidia = new ChatOpenAI({
+    model: "z-ai/glm-5.3",
+    apiKey: process.env.NVIDIA_API_KEY,
+    configuration: { baseURL: "https://integrate.api.nvidia.com/v1" },
+});
+
 
 const googleModel = new ChatGoogle({
     apiKey: process.env.GEMINI_API_KEY,
@@ -57,7 +73,7 @@ const updateHtmlTool = tool(
 
 // ––––––––––––––––––– agent ––––––––––––––––––
 const agent = createAgent({
-    model,
+    model: model,
     tools: [ readFileTool, updateHtmlTool ],
     systemPrompt: `
     You must use tools for performing the user's tasks.
