@@ -1,0 +1,1 @@
+export const CONFIG_DIR = `${process.env.HOME}/.config/groqcode`;
