@@ -47,6 +47,12 @@ export default async function (apiKey) {
             }
         }
 
+        const aiMessage = response.content;
+
+        if (aiMessage) {
+            console.log(aiMessage);
+        }
+
         return {
             messages: [ ...messages, response ],
             count: state.count + 1

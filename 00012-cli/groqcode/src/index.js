@@ -19,19 +19,27 @@ export async function main(args) {
     }
     const graph = await initiateGraph(await getAPIKey())
 
-    const prompt = await rl.question("Please enter your prompt: ");
+    let messages = []
 
-    const response = await graph.invoke({
-        messages: [
-            new SystemMessage(`
+    while (true) {
+        const prompt = await rl.question("Please enter your prompt: ");
+
+        if (messages.length > 0) {
+            messages.push(new HumanMessage(prompt));
+        }
+
+        const response = await graph.invoke({
+            messages: messages.length > 0 ? messages : [
+                new SystemMessage(`
                 You must use the tools available to you. for performing the user's tasks.
                 current working directory is ${process.cwd()}
                 `),
-            new HumanMessage(prompt)
-        ],
-        count: 1
-    })
+                new HumanMessage(prompt)
+            ],
+            count: 1
+        })
 
-    console.log(response);
+        messages = response.messages;
+    }
 
 }

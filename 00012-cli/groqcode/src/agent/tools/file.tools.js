@@ -186,7 +186,7 @@ export const edit_files = tool(
                 z.object({
                     filePath: z.string().min(1, "File path is required"),
                     content: z.string().min(1, "New file content is required").describe("New content to replace the old content"),
-                    replaceContent: z.string().optional().describe("Content to be replaced in the file")
+                    replaceContent: z.string().describe("Content to be replaced in the file, provide empty string to replace the entire content")
                 })
             ).min(1, "At least one file is required")
         })
