@@ -8,22 +8,13 @@ import {
 } from "@langchain/langgraph";
 import { getAPIKey } from "../../utils/key.utils.js"
 import { ChatGroq } from "@langchain/groq"
-import { tool } from "langchain"
+import { list_directories } from "../tools/file.tools.js"
 import * as z from "zod"
 
-const readHtmlFile = tool(
-    async () => {
-        return "<html></html>";
-    },
-    {
-        name: "readHtmlFile",
-        description: "Reads the HTML file",
-        schema: z.object({})
-    }
-)
+
 
 const toolsByName = {
-    [ readHtmlFile.name ]: readHtmlFile
+    [ list_directories.name ]: list_directories
 }
 
 
@@ -34,7 +25,7 @@ export default async function (apiKey) {
         temperature: 0.3
     })
 
-    const modelWithTool = model.bindTools([ readHtmlFile ])
+    const modelWithTool = model.bindTools([ list_directories ])
 
     const LLMNode = async (state) => {
         const messages = state.messages;
