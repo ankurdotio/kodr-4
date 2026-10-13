@@ -23,7 +23,10 @@ export async function main(args) {
 
     const response = await graph.invoke({
         messages: [
-            new SystemMessage("You must use the tools available to you. for performing the user's tasks."),
+            new SystemMessage(`
+                You must use the tools available to you. for performing the user's tasks.
+                current working directory is ${process.cwd()}
+                `),
             new HumanMessage(prompt)
         ],
         count: 1

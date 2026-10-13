@@ -8,13 +8,16 @@ import {
 } from "@langchain/langgraph";
 import { getAPIKey } from "../../utils/key.utils.js"
 import { ChatGroq } from "@langchain/groq"
-import { list_directories } from "../tools/file.tools.js"
+import { list_directories, read_files, create_files, edit_files } from "../tools/file.tools.js"
 import * as z from "zod"
 
 
 
 const toolsByName = {
-    [ list_directories.name ]: list_directories
+    [ list_directories.name ]: list_directories,
+    [ read_files.name ]: read_files,
+    [ create_files.name ]: create_files,
+    [ edit_files.name ]: edit_files,
 }
 
 
@@ -25,12 +28,24 @@ export default async function (apiKey) {
         temperature: 0.3
     })
 
-    const modelWithTool = model.bindTools([ list_directories ])
+    const modelWithTool = model.bindTools([ list_directories, read_files, create_files, edit_files ])
 
     const LLMNode = async (state) => {
         const messages = state.messages;
 
-        const response = await modelWithTool.invoke(messages)
+        let response = null;
+
+        while (response === null) {
+            try {
+                response = await modelWithTool.invoke(messages)
+            } catch (error) {
+                if (error?.status !== 429) {
+                    throw error
+                }
+                console.warn("Rate limit exceeded. Retrying in 60 seconds...")
+                await new Promise(resolve => setTimeout(resolve, 60_000 + Math.random() * 1000))
+            }
+        }
 
         return {
             messages: [ ...messages, response ],
@@ -79,6 +94,5 @@ export default async function (apiKey) {
 
     return graph;
 }
-
 
 
