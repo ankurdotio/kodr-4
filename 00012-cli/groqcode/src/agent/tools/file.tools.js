@@ -21,7 +21,6 @@ async function readDir(dirPath) {
         .filter(entry => !ignored.includes(entry.name));
     return entries;
 }
-
 /**
  * @tool
  * @name list_directories

@@ -1,6 +1,6 @@
 import fs from "fs/promises";
 import { CONFIG_DIR } from "./constant.js";
-import axios from "axios"
+import { BedrockClient, ListFoundationModelsCommand } from "@aws-sdk/client-bedrock";
 
 
 // check the settings.json file exists in ~/.config/groqcode/
@@ -27,16 +27,19 @@ export async function checkApiKey() {
 
     try {
         const settings = JSON.parse(settingsContent);
-        const apiKey = settings.GROQ_API_KEY;
+        const credentials = settings.AWS_API_CREDENTIALS;
 
-        if (!apiKey)
+        if (!credentials?.accessKeyId || !credentials?.secretAccessKey || !credentials?.region)
             return false;
 
-        await axios.get("https://api.groq.com/openai/v1/models", {
-            headers: {
-                "Authorization": `Bearer ${apiKey}`
-            }
-        })
+        const client = new BedrockClient({
+            region: credentials.region,
+            credentials: {
+                accessKeyId: credentials.accessKeyId,
+                secretAccessKey: credentials.secretAccessKey,
+            },
+        });
+        await client.send(new ListFoundationModelsCommand({}));
 
         return true;
 
@@ -48,7 +51,7 @@ export async function checkApiKey() {
 
 
 // save the GROQ API key to settings.json
-export async function saveApiKey(apiKey) {
+export async function saveApiKey(credentials) {
     // check the config directory exists
     try {
         await fs.access(CONFIG_DIR);
@@ -62,22 +65,22 @@ export async function saveApiKey(apiKey) {
         const settingsContent = await fs.readFile(settingFilePath, "utf-8");
         settings = JSON.parse(settingsContent);
     }
-    settings.GROQ_API_KEY = apiKey;
+    settings.AWS_API_CREDENTIALS = credentials;
     await fs.writeFile(settingFilePath, JSON.stringify(settings, null, 4), "utf-8");
 }
 
-// get the GROQ API key from settings.json
-export async function getAPIKey() {
+// get the AWS API credentials from settings.json
+export async function getAPICredentials() {
     if (!(await checkSettingsFile())) {
         throw new Error("Settings file not found");
     }
 
     if (!(await checkApiKey())) {
-        throw new Error("GROQ API key not found");
+        throw new Error("AWS API credentials not found");
     }
 
     const settingFilePath = `${CONFIG_DIR}/settings.json`;
     const settingsContent = await fs.readFile(settingFilePath, "utf-8");
     const settings = JSON.parse(settingsContent);
-    return settings.GROQ_API_KEY;
+    return settings.AWS_API_CREDENTIALS;
 }

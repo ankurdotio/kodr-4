@@ -1,4 +1,4 @@
-import { checkApiKey, saveApiKey, getAPIKey } from "./utils/key.utils.js";
+import { checkApiKey, saveApiKey, getAPICredentials } from "./utils/key.utils.js";
 import readline from "readline/promises"
 import initiateGraph from "./agent/graph/main.graph.js"
 import { HumanMessage, SystemMessage } from "langchain"
@@ -12,12 +12,14 @@ export async function main(args) {
 
     if (!await checkApiKey()) {
 
-        const apiKey = await rl.question("Please enter your GROQ API key: ");
+        const accessKeyId = await rl.question("Please enter your AWS Access Key ID: ");
+        const secretAccessKey = await rl.question("Please enter your AWS Secret Access Key: ");
+        const region = await rl.question("Please enter your AWS Region: ");
 
-        await saveApiKey(apiKey);
+        await saveApiKey({ accessKeyId, secretAccessKey, region });
 
     }
-    const graph = await initiateGraph(await getAPIKey())
+    const graph = await initiateGraph(await getAPICredentials())
 
     let messages = []
 

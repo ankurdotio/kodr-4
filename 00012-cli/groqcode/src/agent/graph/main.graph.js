@@ -6,8 +6,9 @@ import {
     START,
     END,
 } from "@langchain/langgraph";
-import { getAPIKey } from "../../utils/key.utils.js"
+import { getAPICredentials } from "../../utils/key.utils.js"
 import { ChatGroq } from "@langchain/groq"
+import { ChatBedrockConverse } from "@langchain/aws"
 import { list_directories, read_files, create_files, edit_files } from "../tools/file.tools.js"
 import * as z from "zod"
 
@@ -21,11 +22,21 @@ const toolsByName = {
 }
 
 
-export default async function (apiKey) {
-    const model = new ChatGroq({
-        apiKey: apiKey,
-        model: "openai/gpt-oss-120b",
-        temperature: 0.3
+export default async function ({ accessKeyId, secretAccessKey, region }) {
+    // const model = new ChatGroq({
+    //     apiKey: apiKey,
+    //     model: "openai/gpt-oss-120b",
+    //     temperature: 0.3
+    // })
+
+    const model = new ChatBedrockConverse({
+        credentials: {
+            accessKeyId,
+            secretAccessKey,
+        },
+        region,
+        temperature: 0.3,
+        model: "global.anthropic.claude-opus-4-5-20251101-v1:0"
     })
 
     const modelWithTool = model.bindTools([ list_directories, read_files, create_files, edit_files ])
@@ -100,5 +111,4 @@ export default async function (apiKey) {
 
     return graph;
 }
-
 
