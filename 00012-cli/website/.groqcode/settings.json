@@ -1,0 +1,6 @@
+{
+  "allwaysAllow": [
+    "list_directories",
+    "edit_files"
+  ]
+}

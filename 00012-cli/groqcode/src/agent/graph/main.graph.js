@@ -12,6 +12,7 @@ import { ChatGroq } from "@langchain/groq"
 import { ToolMessage } from "langchain"
 import { ChatBedrockConverse } from "@langchain/aws"
 import { list_directories, read_files, create_files, edit_files } from "../tools/file.tools.js"
+import { addAllwaysAllow, checkAllwaysAllow } from "../../utils/setting.utils.js"
 import * as z from "zod"
 
 
@@ -76,15 +77,26 @@ export default async function ({ accessKeyId, secretAccessKey, region }) {
         const lastMessage = state.messages[ state.messages.length - 1 ];
 
         // ask user permission for the tool call
-        const toolCalls = await Promise.all(lastMessage.tool_calls.map(toolCall => {
+        const toolCalls = await Promise.all(lastMessage.tool_calls.map(async toolCall => {
+
+            if (await checkAllwaysAllow(toolCall.name)) {
+                return { ...toolCall, userAllowed: true }
+            }
+
             console.log("The AI is trying to make a tool call details are below:")
             console.log("Name: ", toolCall.name)
             console.log("Arguments: ", toolCall.args)
-            const userInput = rl.question("Do you allow this tool call [y/n]: ")
 
-            if (userInput !== "y") {
+            const userInput = await rl.question("Do you allow this tool call [y/n] [type 'ay' for always]: ")
+
+            console.log("User input: ", userInput)
+
+            if (userInput.trim().toLocaleLowerCase() == "ay") {
+                await addAllwaysAllow(toolCall.name);
+            } else if (userInput.trim().toLowerCase() !== "y") {
                 return { ...toolCall, userAllowed: false }
             }
+            
             return { ...toolCall, userAllowed: true }
         }))
 

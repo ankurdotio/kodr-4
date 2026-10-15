@@ -30,7 +30,8 @@ export async function main(args) {
             messages: messages.length > 0 ? messages : [
                 new SystemMessage(`
                 You must use the tools available to you. for performing the user's tasks.
-                current working directory is ${process.cwd()}
+                current working directory is ${process.cwd()}.
+                always use absolute paths for reading/writing files.
                 `),
                 new HumanMessage(prompt)
             ],
