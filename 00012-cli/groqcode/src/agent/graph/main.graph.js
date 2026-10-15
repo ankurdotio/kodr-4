@@ -6,8 +6,10 @@ import {
     START,
     END,
 } from "@langchain/langgraph";
+import { rl } from "../../utils/io.utils.js"
 import { getAPICredentials } from "../../utils/key.utils.js"
 import { ChatGroq } from "@langchain/groq"
+import { ToolMessage } from "langchain"
 import { ChatBedrockConverse } from "@langchain/aws"
 import { list_directories, read_files, create_files, edit_files } from "../tools/file.tools.js"
 import * as z from "zod"
@@ -73,12 +75,30 @@ export default async function ({ accessKeyId, secretAccessKey, region }) {
     const toolNode = async (state) => {
         const lastMessage = state.messages[ state.messages.length - 1 ];
 
-        const toolCalls = lastMessage.tool_calls
+        // ask user permission for the tool call
+        const toolCalls = await Promise.all(lastMessage.tool_calls.map(toolCall => {
+            console.log("The AI is trying to make a tool call details are below:")
+            console.log("Name: ", toolCall.name)
+            console.log("Arguments: ", toolCall.args)
+            const userInput = rl.question("Do you allow this tool call [y/n]: ")
+
+            if (userInput !== "y") {
+                return { ...toolCall, userAllowed: false }
+            }
+            return { ...toolCall, userAllowed: true }
+        }))
 
         const toolResponses = toolCalls.map(async toolCall => {
-            const tool = toolsByName[ toolCall.name ]
-            const response = await tool.invoke(toolCall)
-            return response;
+            if (toolCall.userAllowed) {
+                const tool = toolsByName[ toolCall.name ]
+                const response = await tool.invoke(toolCall)
+                return response;
+            } else {
+                return new ToolMessage({
+                    content: "User didn't allow this tool call",
+                    tool_call_id: toolCall.id
+                })
+            }
         })
 
         return {

@@ -1,12 +1,8 @@
 import { checkApiKey, saveApiKey, getAPICredentials } from "./utils/key.utils.js";
-import readline from "readline/promises"
 import initiateGraph from "./agent/graph/main.graph.js"
 import { HumanMessage, SystemMessage } from "langchain"
+import { rl } from "./utils/io.utils.js"
 
-const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-});
 
 export async function main(args) {
 
