@@ -23,7 +23,10 @@ const pdfText = await parser.getText()
 
 
 // ––––––––––– converting Text into Chunks –––––––––––––––––
-const splitter = new RecursiveCharacterTextSplitter({ chunkSize: 300, chunkOverlap: 50 })
+const splitter = new RecursiveCharacterTextSplitter({
+    chunkSize: 300,
+    chunkOverlap: 50
+})
 const chunks = await splitter.splitText(pdfText.text)
 
 console.log("Number of chunks: ", chunks.length)
