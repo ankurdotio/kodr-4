@@ -40,3 +40,29 @@ export async function createConversationWithFirstMessage(input) {
         throw error;
     }
 }
+
+/**
+ * Find a conversation by its identifier and user ownership.
+ * @param {string} conversationId
+ * @param {string} userId
+ * @return {Promise<import('mongoose').HydratedDocument<unknown> | null>}
+ */
+export async function findConversationByIdAndUserId(conversationId, userId) {
+    return ConversationModel.findOne({ _id: conversationId, userId });
+}
+
+/**
+ * Create a conversation
+ * @param {{userId: import('mongoose').Types.ObjectId | string, title: string}} input
+ * @returns {Promise<import('mongoose').HydratedDocument<unknown>>}
+ */
+export async function createConversation(input) {
+    const conversation = new ConversationModel({
+        userId: input.userId,
+        title: input.title,
+        titleSource: 'ai',
+        lastMessageAt: new Date(),
+    });
+    await conversation.save();
+    return conversation;
+}

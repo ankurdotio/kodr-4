@@ -57,7 +57,7 @@ const messageSchema = new mongoose.Schema(
         latencyMs: { type: latencySchema, default: undefined },
         error: { type: errorSchema, default: null },
         parentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Message', default: null },
-        attachments: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Attachment' }],
+        attachments: [ { type: mongoose.Schema.Types.ObjectId, ref: 'Attachment' } ],
         sources: { type: [ sourceSchema ], default: undefined },
         feedback: { type: String, enum: [ 'up', 'down', null ], default: null },
     },

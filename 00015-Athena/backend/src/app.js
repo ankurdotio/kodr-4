@@ -12,7 +12,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(morgan(env.nodeEnv === 'production' ? 'combined' : 'dev'));
-app.use('/api/v1', apiRouter);
+app.use('/api/', apiRouter);
 app.use(notFound);
 app.use(errorHandler);
 

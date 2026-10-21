@@ -15,7 +15,7 @@ export async function authenticate(request, response, next) {
         if (!token) throw new AppError(401, 'Authentication required');
 
         const payload = verifyAccessToken(token);
-        const user = await findUserById(payload.id);
+        const user = payload
         if (!user) throw new AppError(401, 'Authentication required');
 
         request.user = user;
