@@ -36,8 +36,7 @@ const sourceSchema = new mongoose.Schema(
 const messageSchema = new mongoose.Schema(
     {
         conversationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Conversation', required: true },
-        userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-        role: { type: String, enum: [ 'user', 'assistant' ], required: true },
+        role: { type: String, enum: [ 'user', 'assistant', "tool" ], required: true },
         content: {
             type: String,
             required: true,
@@ -50,6 +49,15 @@ const messageSchema = new mongoose.Schema(
                 message: 'User messages must contain between 1 and 8,000 characters',
             },
         },
+        toolCalls: [
+            {
+                toolName: { type: String, required: true },
+                arguments: { type: mongoose.Schema.Types.Mixed, required: true },
+                tool_id: { type: String, required: true },
+            }
+        ],
+        toolName: { type: String, default: null },
+        tool_call_id: { type: String, default: null },
         status: { type: String, enum: [ 'streaming', 'completed', 'stopped', 'error' ], default: 'streaming' },
         model: { type: String, enum: env.bedrockModelAllowList, default: undefined },
         finishReason: { type: String, enum: [ 'stop', 'length', 'aborted', 'error', null ], default: null },
