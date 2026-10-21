@@ -19,7 +19,7 @@ export function createAccessToken(user) {
  */
 export function createRefreshToken(user) {
     return jwt.sign({ id: user.id, email: user.email }, env.refreshTokenSecret, {
-        expiresIn: '7d',
+        expiresIn: env.refreshTokenTtl,
         jwtid: randomUUID(),
     });
 }

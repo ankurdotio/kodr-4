@@ -1,10 +1,16 @@
 import {
-    clearRefreshToken,
     createUser,
     findUserByEmail,
-    findUserByIdWithRefreshToken,
-    updateRefreshToken,
+    findUserById,
 } from '../DAO/user.dao.js';
+import {
+    createSession,
+    deleteSession,
+    findSessionByToken,
+    revokeSession,
+    revokeUserSessions,
+    rotateSession,
+} from '../DAO/session.dao.js';
 import { env } from '../config/env.js';
 import AppError from '../utils/AppError.js';
 import { sendSuccess } from '../utils/apiResponse.js';
@@ -16,7 +22,7 @@ const refreshCookieOptions = {
     httpOnly: true,
     secure: env.nodeEnv === 'production',
     sameSite: 'strict',
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    maxAge: env.refreshTokenTtl * 1000,
     path: '/api/v1/auth',
 };
 
@@ -41,7 +47,11 @@ export const register = asyncHandler(async (request, response) => {
         password: request.body.password,
     });
     const tokens = issueTokenPair(user);
-    await updateRefreshToken(user._id.toString(), tokens.refreshToken);
+    await createSession({
+        userId: user._id,
+        refreshToken: tokens.refreshToken,
+        userAgent: request.get('user-agent'),
+    });
     response.cookie(refreshCookieName, tokens.refreshToken, refreshCookieOptions);
     return sendSuccess(response, 201, 'Registration successful', {
         accessToken: tokens.accessToken,
@@ -58,7 +68,11 @@ export const login = asyncHandler(async (request, response) => {
     if (!validPassword) throw new AppError(401, 'Invalid credentials');
 
     const tokens = issueTokenPair(user);
-    await updateRefreshToken(user._id.toString(), tokens.refreshToken);
+    await createSession({
+        userId: user._id,
+        refreshToken: tokens.refreshToken,
+        userAgent: request.get('user-agent'),
+    });
     response.cookie(refreshCookieName, tokens.refreshToken, refreshCookieOptions);
     return sendSuccess(response, 200, 'Login successful', {
         accessToken: tokens.accessToken,
@@ -74,11 +88,39 @@ export const refresh = asyncHandler(async (request, response) => {
     if (!currentToken) throw new AppError(401, 'Invalid refresh token');
 
     const payload = verifyRefreshToken(currentToken);
-    const user = await findUserByIdWithRefreshToken(payload.id);
-    if (!user || user.refreshToken !== currentToken) throw new AppError(401, 'Invalid refresh token');
+    const session = await findSessionByToken(currentToken);
+    if (!session || session.userId.toString() !== payload.id) {
+        throw new AppError(401, 'Invalid refresh token');
+    }
+
+    if (session.replacedBy) {
+        await revokeUserSessions(session.userId.toString());
+        throw new AppError(401, 'Refresh token reuse detected');
+    }
+
+    if (session.revokedAt || session.expiresAt <= new Date()) {
+        throw new AppError(401, 'Invalid refresh token');
+    }
+
+    const user = await findUserById(payload.id);
+    if (!user) throw new AppError(401, 'Invalid refresh token');
 
     const tokens = issueTokenPair(user);
-    await updateRefreshToken(user._id.toString(), tokens.refreshToken);
+    const replacementSession = await createSession({
+        userId: user._id,
+        refreshToken: tokens.refreshToken,
+        userAgent: request.get('user-agent'),
+    });
+    const rotated = await rotateSession(session._id.toString(), replacementSession._id.toString());
+    if (!rotated) {
+        await deleteSession(replacementSession._id.toString());
+        const latestSession = await findSessionByToken(currentToken);
+        if (latestSession?.replacedBy) {
+            await revokeUserSessions(latestSession.userId.toString());
+        }
+        throw new AppError(401, 'Invalid refresh token');
+    }
+
     response.cookie(refreshCookieName, tokens.refreshToken, refreshCookieOptions);
     return sendSuccess(response, 200, 'Session refreshed', {
         accessToken: tokens.accessToken,
@@ -94,8 +136,10 @@ export const logout = asyncHandler(async (request, response) => {
     if (currentToken) {
         try {
             const payload = verifyRefreshToken(currentToken);
-            const user = await findUserByIdWithRefreshToken(payload.id);
-            if (user?.refreshToken === currentToken) await clearRefreshToken(user._id.toString());
+            const session = await findSessionByToken(currentToken);
+            if (session?.userId.toString() === payload.id && !session.revokedAt) {
+                await revokeSession(session._id.toString());
+            }
         } catch {
             // Logout remains successful even when the browser holds an expired cookie.
         }

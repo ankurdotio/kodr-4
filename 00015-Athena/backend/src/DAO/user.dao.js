@@ -26,28 +26,3 @@ export async function findUserByEmail(email, options = {}) {
 export async function findUserById(userId) {
     return UserModel.findById(userId).exec();
 }
-
-/** Find a user and include its persisted refresh token.
- * @param {string} userId
- * @returns {Promise<import('mongoose').HydratedDocument<unknown> | null>}
- */
-export async function findUserByIdWithRefreshToken(userId) {
-    return UserModel.findById(userId).select('+refreshToken').exec();
-}
-
-/** Persist the latest refresh token for a user.
- * @param {string} userId
- * @param {string} refreshToken
- * @returns {Promise<import('mongoose').UpdateWriteOpResult>}
- */
-export async function updateRefreshToken(userId, refreshToken) {
-    return UserModel.updateOne({ _id: userId }, { $set: { refreshToken } }).exec();
-}
-
-/** Invalidate a user's persisted refresh token.
- * @param {string} userId
- * @returns {Promise<import('mongoose').UpdateWriteOpResult>}
- */
-export async function clearRefreshToken(userId) {
-    return UserModel.updateOne({ _id: userId }, { $set: { refreshToken: null } }).exec();
-}
