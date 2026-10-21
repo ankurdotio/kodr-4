@@ -2,6 +2,7 @@
   "dependencies": {
     "@langchain/aws": "^1.4.7",
     "@langchain/core": "^1.2.20",
+    "@langchain/langgraph": "^1.5.1",
     "langchain": "^1.5.18",
     "zod": "^4.6.7"
   }

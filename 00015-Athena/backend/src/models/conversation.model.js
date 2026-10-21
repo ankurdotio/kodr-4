@@ -30,21 +30,6 @@ const conversationSchema = new mongoose.Schema(
     { timestamps: true },
 );
 
-conversationSchema.pre('save', async function requireFirstMessage() {
-    if (!this.isNew) return;
-
-    const { default: MessageModel } = await import('./message.model.js');
-    const firstMessage = await MessageModel.exists({
-        conversationId: this._id,
-        userId: this.userId,
-        role: 'user',
-    }).session(this.$session());
-
-    if (!firstMessage) {
-        throw new Error('A conversation must be created with its first user message');
-    }
-});
-
 conversationSchema.index({ userId: 1, isPinned: -1, lastMessageAt: -1 });
 conversationSchema.index(
     { 'share.id': 1 },

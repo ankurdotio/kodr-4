@@ -56,3 +56,13 @@ export async function createToolMessage(input) {
     });
     return message;
 }
+
+
+/**
+ * Find all the messages for a given conversation ID.
+ * @param {string} conversationId - The ID of the conversation to find messages for.
+ * @returns {Promise<import('mongoose').HydratedDocument<unknown>[]>} - An array of message documents for the given conversation ID.
+ */
+export async function findMessagesByConversationId(conversationId) {
+    return messageModel.find({ conversationId })
+}
