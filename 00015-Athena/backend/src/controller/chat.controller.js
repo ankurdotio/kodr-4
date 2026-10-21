@@ -80,12 +80,15 @@ export const handleMessage = asyncHandler(async (request, response) => {
     response.setHeader("Conversation-title", conversation.title);
     response.setHeader("Access-Control-Expose-Headers", "Conversation-Id, Conversation-title");
 
+    console.log("Messages: ", messages)
+    console.log("Conversation ID: ", conversation._id.toString())
+
     const result = await graph.invoke({
         messages: messages,
         conversationId: conversation._id.toString(),
         onToken: (token) => {
             console.log("Token: ", token)
-            // response.write(`data: ${JSON.stringify({ token })}\n\n`);
+            response.write(`data: ${JSON.stringify({ token })}\n\n`);
         }
     })
 

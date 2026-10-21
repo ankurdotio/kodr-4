@@ -24,54 +24,48 @@ const opusModel = new ChatBedrockConverse({
  */
 const LLMNode = async (state) => {
 
-    try {
 
-        const stream = await opusModel.stream({
-            messages: state.messages,
-        })
+    const stream = await opusModel.stream(state.messages)
 
 
-        let aiFullMessage = null
+    let aiFullMessage = null
 
-        for await (const chunk of stream) {
-            for (const block of chunk.contentBlocks) {
-                if (block.type === "text") {
-                    state.onToken(block.text)
-                }
+    for await (const chunk of stream) {
+        for (const block of chunk.contentBlocks) {
+            if (block.type === "text") {
+                state.onToken(block.text)
             }
-            aiFullMessage = aiFullMessage ? aiFullMessage.concat(chunk) : chunk
         }
+        aiFullMessage = aiFullMessage ? aiFullMessage.concat(chunk) : chunk
+    }
 
-        await createAssistantMessage({
-            conversationId: state.conversationId,
+    await createAssistantMessage({
+        conversationId: state.conversationId,
+        content: aiFullMessage.content,
+        toolCalls: aiFullMessage.toolCalls.map(toolCall => {
+            return {
+                toolName: toolCall.name,
+                arguments: toolCall.args,
+                tool_id: toolCall.id
+            }
+        })
+    })
+
+    return {
+        messages: [ ...state.messages, new AIMessage({
             content: aiFullMessage.content,
-            toolCalls: aiFullMessage.toolCalls.map(toolCall => {
+            tool_calls: aiFullMessage.toolCalls.map(toolCall => {
                 return {
-                    toolName: toolCall.name,
-                    arguments: toolCall.args,
-                    tool_id: toolCall.id
+                    name: toolCall.toolName,
+                    args: toolCall.arguments,
+                    id: toolCall.tool_id
                 }
             })
-        })
-
-        return {
-            messages: [ ...state.messages, new AIMessage({
-                content: aiFullMessage.content,
-                tool_calls: aiFullMessage.toolCalls.map(toolCall => {
-                    return {
-                        name: toolCall.toolName,
-                        args: toolCall.arguments,
-                        id: toolCall.tool_id
-                    }
-                })
-            }) ],
-            onToken: state.onToken,
-            conversationId: state.conversationId,
-        }
-    } catch (error) {
-        console.error("Error in LLMNode: ", error)
-        throw error
+        }) ],
+        onToken: state.onToken,
+        conversationId: state.conversationId,
     }
+
 
 }
 
