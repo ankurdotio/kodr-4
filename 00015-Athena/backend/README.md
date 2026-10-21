@@ -10,7 +10,7 @@ cp .env.example .env
 npm run dev
 ```
 
-Set distinct random values for `ACCESS_TOKEN_SECRET` and `REFRESH_TOKEN_SECRET` in `.env`. The API listens on port `5000` by default. Start the Vite client separately from `../frontend`; its `/api` proxy forwards to this server, so no CORS middleware is needed in local development.
+Set distinct random values for `ACCESS_TOKEN_SECRET` and `REFRESH_TOKEN_SECRET` in `.env`. The API listens on port `5001` by default. Start the Vite client separately from `../frontend`; its `/api` proxy forwards to this server, so no CORS middleware is needed in local development.
 
 ## Routes
 

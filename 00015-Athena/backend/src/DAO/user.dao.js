@@ -5,7 +5,7 @@ import UserModel from '../models/user.model.js';
  * @returns {Promise<import('mongoose').HydratedDocument<unknown>>}
  */
 export async function createUser(userData) {
-  return UserModel.create(userData);
+    return UserModel.create(userData);
 }
 
 /** Find a user by normalized email, optionally including the password hash.
@@ -14,9 +14,9 @@ export async function createUser(userData) {
  * @returns {Promise<import('mongoose').HydratedDocument<unknown> | null>}
  */
 export async function findUserByEmail(email, options = {}) {
-  const query = UserModel.findOne({ email });
-  if (options.includePassword) query.select('+password');
-  return query.exec();
+    const query = UserModel.findOne({ email });
+    if (options.includePassword) query.select('+password');
+    return query.exec();
 }
 
 /** Find a user by its database ID.
@@ -24,7 +24,7 @@ export async function findUserByEmail(email, options = {}) {
  * @returns {Promise<import('mongoose').HydratedDocument<unknown> | null>}
  */
 export async function findUserById(userId) {
-  return UserModel.findById(userId).exec();
+    return UserModel.findById(userId).exec();
 }
 
 /** Find a user and include its persisted refresh token.
@@ -32,7 +32,7 @@ export async function findUserById(userId) {
  * @returns {Promise<import('mongoose').HydratedDocument<unknown> | null>}
  */
 export async function findUserByIdWithRefreshToken(userId) {
-  return UserModel.findById(userId).select('+refreshToken').exec();
+    return UserModel.findById(userId).select('+refreshToken').exec();
 }
 
 /** Persist the latest refresh token for a user.
@@ -41,7 +41,7 @@ export async function findUserByIdWithRefreshToken(userId) {
  * @returns {Promise<import('mongoose').UpdateWriteOpResult>}
  */
 export async function updateRefreshToken(userId, refreshToken) {
-  return UserModel.updateOne({ _id: userId }, { $set: { refreshToken } }).exec();
+    return UserModel.updateOne({ _id: userId }, { $set: { refreshToken } }).exec();
 }
 
 /** Invalidate a user's persisted refresh token.
@@ -49,5 +49,5 @@ export async function updateRefreshToken(userId, refreshToken) {
  * @returns {Promise<import('mongoose').UpdateWriteOpResult>}
  */
 export async function clearRefreshToken(userId) {
-  return UserModel.updateOne({ _id: userId }, { $set: { refreshToken: null } }).exec();
+    return UserModel.updateOne({ _id: userId }, { $set: { refreshToken: null } }).exec();
 }

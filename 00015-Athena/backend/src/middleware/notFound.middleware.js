@@ -7,5 +7,5 @@ import AppError from '../utils/AppError.js';
  * @returns {void}
  */
 export function notFound(request, response, next) {
-  return next(new AppError(404, 'Route not found'));
+    return next(new AppError(404, 'Route not found'));
 }

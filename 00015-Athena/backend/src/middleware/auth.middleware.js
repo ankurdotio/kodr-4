@@ -9,18 +9,18 @@ import { verifyAccessToken } from '../utils/jwt.js';
  * @returns {Promise<void>}
  */
 export async function authenticate(request, response, next) {
-  try {
-    const authorization = request.get('authorization') ?? '';
-    const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
-    if (!token) throw new AppError(401, 'Authentication required');
+    try {
+        const authorization = request.get('authorization') ?? '';
+        const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
+        if (!token) throw new AppError(401, 'Authentication required');
 
-    const payload = verifyAccessToken(token);
-    const user = await findUserById(payload.id);
-    if (!user) throw new AppError(401, 'Authentication required');
+        const payload = verifyAccessToken(token);
+        const user = await findUserById(payload.id);
+        if (!user) throw new AppError(401, 'Authentication required');
 
-    request.user = user;
-    return next();
-  } catch (error) {
-    return next(error instanceof AppError ? error : new AppError(401, 'Authentication required'));
-  }
+        request.user = user;
+        return next();
+    } catch (error) {
+        return next(error instanceof AppError ? error : new AppError(401, 'Authentication required'));
+    }
 }

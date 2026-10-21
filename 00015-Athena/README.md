@@ -26,7 +26,7 @@ npm install
 npm run dev
 ```
 
-The Vite server is available at `http://localhost:5173` and proxies `/api` to `http://localhost:5000`. Set `VITE_API_PROXY_TARGET` in the frontend environment to override that backend URL. Replace both example token secrets with distinct random values before deployment.
+The Vite server is available at `http://localhost:5173` and proxies `/api` to `http://localhost:5001`. Set `VITE_API_PROXY_TARGET` in the frontend environment to override that backend URL. Replace both example token secrets with distinct random values before deployment.
 
 ## Frontend layers
 

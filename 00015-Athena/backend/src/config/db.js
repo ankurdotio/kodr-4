@@ -6,5 +6,5 @@ import { env } from './env.js';
  * @throws {Error} When MongoDB cannot be reached.
  */
 export async function connectDatabase() {
-  return mongoose.connect(env.mongoUri);
+    return mongoose.connect(env.mongoUri);
 }

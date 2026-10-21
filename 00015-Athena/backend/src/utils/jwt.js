@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';
 
@@ -6,7 +7,10 @@ import { env } from '../config/env.js';
  * @returns {string}
  */
 export function createAccessToken(user) {
-  return jwt.sign({ id: user.id, email: user.email }, env.accessTokenSecret, { expiresIn: '15m' });
+    return jwt.sign({ id: user.id, email: user.email }, env.accessTokenSecret, {
+        expiresIn: '15m',
+        jwtid: randomUUID(),
+    });
 }
 
 /** Issue a refresh token signed with its independent secret.
@@ -14,7 +18,10 @@ export function createAccessToken(user) {
  * @returns {string}
  */
 export function createRefreshToken(user) {
-  return jwt.sign({ id: user.id, email: user.email }, env.refreshTokenSecret, { expiresIn: '7d' });
+    return jwt.sign({ id: user.id, email: user.email }, env.refreshTokenSecret, {
+        expiresIn: '7d',
+        jwtid: randomUUID(),
+    });
 }
 
 /** Verify a bearer access token.
@@ -22,7 +29,7 @@ export function createRefreshToken(user) {
  * @returns {{id: string, email: string}}
  */
 export function verifyAccessToken(token) {
-  return /** @type {{id: string, email: string}} */ (jwt.verify(token, env.accessTokenSecret));
+    return /** @type {{id: string, email: string}} */ (jwt.verify(token, env.accessTokenSecret));
 }
 
 /** Verify a refresh token.
@@ -30,5 +37,5 @@ export function verifyAccessToken(token) {
  * @returns {{id: string, email: string}}
  */
 export function verifyRefreshToken(token) {
-  return /** @type {{id: string, email: string}} */ (jwt.verify(token, env.refreshTokenSecret));
+    return /** @type {{id: string, email: string}} */ (jwt.verify(token, env.refreshTokenSecret));
 }
