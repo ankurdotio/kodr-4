@@ -1,4 +1,3 @@
-import { env } from '../config/env.js';
 import AppError from '../utils/AppError.js';
 import { sendSuccess } from '../utils/apiResponse.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -78,22 +77,23 @@ export const handleMessage = asyncHandler(async (request, response) => {
 
     response.setHeader("Conversation-Id", conversation._id.toString());
     response.setHeader("Conversation-title", conversation.title);
-    response.setHeader("Access-Control-Expose-Headers", "Conversation-Id, Conversation-title");
+    response.setHeader("Access-Control-Expose-Headers", "Conversation-Id, Conversation-title, User-Message-Id");
 
 
-    await createUserMessage({
+    const userMessage = await createUserMessage({
         conversationId: conversation._id.toString(),
         content: content
     })
+    response.setHeader("User-Message-Id", userMessage._id.toString());
 
-    const result = await graph.invoke({
+    await graph.invoke({
         messages: messages,
         conversationId: conversation._id.toString(),
         onToken: (token) => {
             response.write(`data: ${JSON.stringify({ token })}\n\n`);
         },
         onComplete: (id) => {
-            res.write(`data:${JSON.stringify({ id })}`)
+            response.write(`data: ${JSON.stringify({ id })}\n\n`);
         }
     })
 

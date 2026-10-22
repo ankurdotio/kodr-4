@@ -6,7 +6,7 @@ let sessionExpiredHandler = () => { }
 let tokenUpdatedHandler = () => { }
 
 export const apiClient = axios.create({
-    baseURL: '/api/v1',
+    baseURL: '/api',
     withCredentials: true,
     headers: { 'Content-Type': 'application/json' },
 })
@@ -44,7 +44,7 @@ apiClient.interceptors.response.use(
         try {
             if (!refreshRequest) {
                 refreshRequest = axios
-                    .post('/api/v1/auth/refresh', {}, { withCredentials: true })
+                    .post('/api/auth/refresh', {}, { withCredentials: true })
                     .then((response) => {
                         accessToken = response.data.data.accessToken
                         tokenUpdatedHandler(accessToken)

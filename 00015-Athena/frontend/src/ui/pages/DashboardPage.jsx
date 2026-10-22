@@ -1,37 +1,334 @@
-import { ArrowUpRight, LogOut } from 'lucide-react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import {
+  ArrowUp,
+  ChevronDown,
+  Menu,
+  MessageSquare,
+  Plus,
+  Search,
+  Sparkles,
+  X,
+} from 'lucide-react'
+import { useDispatch, useSelector } from 'react-redux'
 import { useAuth } from '../../hooks/useAuth.js'
+import {
+  clearConversationError,
+  fetchConversationMessages,
+  fetchConversations,
+  selectConversation,
+  sendMessage,
+  startNewConversation,
+} from '../../state/conversationSlice.js'
 import Brand from '../components/Brand.jsx'
 
-export default function DashboardPage() {
-  const { user, logout, isSubmitting } = useAuth()
+const MarkdownMessage = lazy(() => import('../components/MarkdownMessage.jsx'))
 
-  return (
-    <div className="min-h-screen bg-[var(--canvas)] px-5">
-      <header className="mx-auto flex w-full max-w-5xl items-center justify-between border-b border-[var(--line)] py-6">
+const suggestions = [
+  'Help me brainstorm ideas',
+  'Explain a concept simply',
+  'Draft something thoughtful',
+]
+
+function getMessageId(message) {
+  return message.id ?? message._id
+}
+
+function groupConversations(conversations) {
+  const today = new Date().toDateString()
+  const recent = new Date()
+  recent.setDate(recent.getDate() - 7)
+
+  return [
+    { label: 'Today', items: conversations.filter((item) => new Date(item.lastMessageAt).toDateString() === today) },
+    {
+      label: 'Previous 7 days',
+      items: conversations.filter((item) => {
+        const date = new Date(item.lastMessageAt)
+        return date.toDateString() !== today && date >= recent
+      }),
+    },
+    {
+      label: 'Older',
+      items: conversations.filter((item) => new Date(item.lastMessageAt) < recent),
+    },
+  ].filter((group) => group.items.length)
+}
+
+export default function DashboardPage() {
+  const dispatch = useDispatch()
+  const conversation = useSelector(selectConversation)
+  const { user, logout, isSubmitting } = useAuth()
+  const [ messageInput, setMessageInput ] = useState('')
+  const [ search, setSearch ] = useState('')
+  const [ sidebarOpen, setSidebarOpen ] = useState(false)
+  const messagesEndRef = useRef(null)
+  const textareaRef = useRef(null)
+  const activeMessages = conversation.messages[conversation.currentChat] ?? []
+  const isSending = conversation.sendStatus === 'loading'
+  const currentTitle = conversation.conversations.find((item) => item.id === conversation.currentChat)?.title
+  const filteredConversations = conversation.conversations.filter((item) =>
+    item.title.toLowerCase().includes(search.toLowerCase()),
+  )
+
+  useEffect(() => {
+    dispatch(fetchConversations())
+  }, [ dispatch ])
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+  }, [ activeMessages.length, conversation.latestAiMessage.content ])
+
+  function openConversation(id) {
+    dispatch(fetchConversationMessages(id))
+    setSidebarOpen(false)
+  }
+
+  function handleNewConversation() {
+    dispatch(startNewConversation())
+    setMessageInput('')
+    setSidebarOpen(false)
+    textareaRef.current?.focus()
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault()
+    const content = messageInput.trim()
+    if (!content || isSending) return
+
+    dispatch(sendMessage({ content, conversationId: conversation.currentChat }))
+    setMessageInput('')
+    dispatch(clearConversationError())
+  }
+
+  function handleInputKeyDown(event) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault()
+      event.currentTarget.form?.requestSubmit()
+    }
+  }
+
+  const sidebar = (
+    <aside className={`${sidebarOpen ? 'flex' : 'hidden md:flex'} fixed inset-y-0 left-0 z-20 w-[286px] shrink-0 flex-col border-r border-[#e6e8e2] bg-[#f8f9f6] md:static`}>
+      <div className="flex items-center justify-between px-5 pb-7 pt-6">
         <Brand />
         <button
-          className="inline-flex items-center gap-2 rounded-md border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm font-medium text-[var(--ink)] transition hover:border-[#bec8bf] disabled:opacity-60"
+          aria-label="Close conversation list"
+          className="grid size-9 place-items-center rounded-lg text-[#68736c] hover:bg-[#ecefe9] md:hidden"
+          onClick={() => setSidebarOpen(false)}
+          type="button"
+        >
+          <X size={18} />
+        </button>
+      </div>
+
+      <div className="px-4">
+        <button
+          className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#225b46] text-sm font-semibold text-white shadow-sm transition hover:bg-[#194a38]"
+          onClick={handleNewConversation}
+          type="button"
+        >
+          <Plus size={17} />
+          New conversation
+        </button>
+        <label className="mt-4 flex h-10 items-center gap-2.5 rounded-xl border border-[#e5e8e2] bg-white px-3 text-[#89928b] focus-within:border-[#a8b9ab]">
+          <Search size={16} />
+          <input
+            aria-label="Search conversations"
+            className="min-w-0 flex-1 bg-transparent text-sm text-[#28342d] outline-none placeholder:text-[#939b95]"
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search conversations"
+            value={search}
+          />
+          <span className="rounded border border-[#e5e8e2] px-1.5 py-0.5 text-[10px] text-[#9aa19c]">⌘ K</span>
+        </label>
+      </div>
+
+      <div className="mt-7 min-h-0 flex-1 overflow-y-auto px-3 pb-5">
+        <p className="mb-3 px-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#939b95]">
+          Your conversations
+        </p>
+        {conversation.conversationsStatus === 'loading' && conversation.conversations.length === 0 ? (
+          <p className="px-2 py-3 text-sm text-[#89928b]">Loading conversations…</p>
+        ) : filteredConversations.length === 0 ? (
+          <p className="px-2 py-3 text-sm leading-6 text-[#89928b]">
+            {search ? 'No conversations match your search.' : 'Your conversations will appear here.'}
+          </p>
+        ) : (
+          groupConversations(filteredConversations).map((group) => (
+            <section className="mb-5" key={group.label}>
+              <h2 className="mb-1 px-2 text-xs font-medium text-[#98a099]">{group.label}</h2>
+              <ul className="space-y-1">
+                {group.items.map((item) => (
+                  <li key={item.id}>
+                    <button
+                      aria-current={conversation.currentChat === item.id ? 'page' : undefined}
+                      className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-left text-[13px] transition ${
+                        conversation.currentChat === item.id
+                          ? 'bg-[#e9eee8] font-medium text-[#234d3a]'
+                          : 'text-[#566159] hover:bg-[#eef0eb]'
+                      }`}
+                      onClick={() => openConversation(item.id)}
+                      type="button"
+                    >
+                      <MessageSquare className="shrink-0 opacity-65" size={15} strokeWidth={1.8} />
+                      <span className="truncate">{item.title}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))
+        )}
+      </div>
+
+      <div className="border-t border-[#e6e8e2] p-3">
+        <button className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition hover:bg-[#eef0eb]" type="button">
+          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[#dfe8df] text-sm font-semibold text-[#315843]">
+            {user?.name?.slice(0, 1)?.toUpperCase() ?? 'A'}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-medium text-[#26352c]">{user?.name ?? 'Athena user'}</span>
+            <span className="block truncate text-xs text-[#8a938c]">{user?.email}</span>
+          </span>
+          <ChevronDown size={16} className="text-[#89928b]" />
+        </button>
+        <button
+          className="mt-1 w-full rounded-lg px-2 py-2 text-left text-xs text-[#6f7972] transition hover:bg-[#eef0eb] hover:text-[#26352c] disabled:opacity-50"
           disabled={isSubmitting}
           onClick={() => logout()}
           type="button"
         >
-          <LogOut size={16} strokeWidth={1.8} />
           Sign out
         </button>
-      </header>
+      </div>
+    </aside>
+  )
 
-      <main className="mx-auto max-w-5xl py-16 sm:py-24">
-        <p className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-[var(--green)]">Your account</p>
-        <h1 className="max-w-2xl font-serif text-4xl leading-tight text-[var(--ink)] sm:text-5xl">
-          Good to see you, {user?.name?.split(' ')[0]}.
-        </h1>
-        <div className="mt-12 grid max-w-2xl gap-5 border-t border-[var(--line)] pt-6 sm:grid-cols-[150px_1fr]">
-          <span className="text-sm text-[var(--muted)]">Signed in as</span>
-          <span className="break-all text-sm font-medium text-[var(--ink)]">{user?.email}</span>
+  return (
+    <div className="flex h-screen min-h-[560px] overflow-hidden bg-[#fff] text-[#25332b]">
+      {sidebar}
+      {sidebarOpen && <button aria-label="Close sidebar" className="fixed inset-0 z-10 bg-black/20 md:hidden" onClick={() => setSidebarOpen(false)} type="button" />}
+      <main className="relative flex min-w-0 flex-1 flex-col">
+        <header className="flex h-[68px] shrink-0 items-center justify-between border-b border-[#eff0ec] px-5 md:px-8">
+          <div className="flex min-w-0 items-center gap-3">
+            <button
+              aria-label="Open conversation list"
+              className="grid size-9 shrink-0 place-items-center rounded-lg text-[#66736a] hover:bg-[#f3f5f1] md:hidden"
+              onClick={() => setSidebarOpen(true)}
+              type="button"
+            >
+              <Menu size={19} />
+            </button>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-[#3a473f]">{currentTitle || 'Athena'}</p>
+              <p className="mt-0.5 text-[11px] text-[#929b94]">A thoughtful space to work things out</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 rounded-full border border-[#e9ece7] bg-[#fbfcfa] px-3 py-1.5 text-xs text-[#66736a]">
+            <Sparkles size={13} className="text-[#528069]" />
+            Athena
+          </div>
+        </header>
+
+        <div className="flex min-h-0 flex-1 flex-col">
+          <section className="min-h-0 flex-1 overflow-y-auto px-5">
+            {conversation.currentChat ? (
+              <div className="mx-auto flex w-full max-w-[800px] flex-col gap-8 py-10 sm:py-12">
+                {conversation.messagesStatus[conversation.currentChat] === 'loading' && activeMessages.length === 0 ? (
+                  <p className="py-16 text-center text-sm text-[#879188]">Loading this conversation…</p>
+                ) : activeMessages.map((message) => (
+                  <article className={`flex gap-4 ${message.role === 'user' ? 'justify-end' : ''}`} key={getMessageId(message)}>
+                    {message.role === 'assistant' && (
+                      <span className="mt-1 grid size-8 shrink-0 place-items-center rounded-full bg-[#e8eee7] text-[#315843]">
+                        <Sparkles size={15} />
+                      </span>
+                    )}
+                    <div className={message.role === 'user'
+                      ? 'max-w-[85%] rounded-2xl rounded-br-md bg-[#f1f3ef] px-5 py-3.5 text-[14px] leading-7 text-[#344239] sm:max-w-[75%]'
+                      : 'min-w-0 flex-1 pt-0.5 text-[14px] leading-7 text-[#344239]'}>
+                      {message.content
+                        ? <Suspense fallback={<p>{message.content}</p>}><MarkdownMessage content={message.content} /></Suspense>
+                        : <span className="inline-flex items-center gap-2 text-sm text-[#879188]"><span className="size-1.5 animate-pulse rounded-full bg-[#5b866c]" />Thinking…</span>}
+                    </div>
+                  </article>
+                ))}
+                {conversation.messagesStatus[conversation.currentChat] === 'failed' && (
+                  <p className="text-center text-sm text-[#a14838]">Unable to load this conversation. Please try again.</p>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+            ) : (
+              <div className="flex h-full min-h-[390px] flex-col items-center justify-center pb-8 text-center">
+                <span className="mb-6 grid size-12 place-items-center rounded-2xl bg-[#edf2eb] text-[#386249]">
+                  <Sparkles size={22} strokeWidth={1.7} />
+                </span>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-[#66816c]">A little room to think</p>
+                <h1 className="font-serif text-[34px] font-normal tracking-[-0.035em] text-[#26372d] sm:text-[42px]">
+                  What would you like to explore?
+                </h1>
+                <p className="mt-3 max-w-md text-sm leading-6 text-[#818b83]">
+                  Ask a question, explore an idea, or work through something complex. We can take it one step at a time.
+                </p>
+                <div className="mt-8 flex max-w-xl flex-wrap justify-center gap-2">
+                  {suggestions.map((suggestion) => (
+                    <button
+                      className="rounded-full border border-[#e7ebe5] bg-white px-4 py-2 text-xs text-[#68766c] transition hover:border-[#c4d2c4] hover:bg-[#f7f9f6]"
+                      key={suggestion}
+                      onClick={() => {
+                        setMessageInput(suggestion)
+                        textareaRef.current?.focus()
+                      }}
+                      type="button"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </section>
+
+          <footer className="shrink-0 px-4 pb-5 pt-3 sm:px-8 sm:pb-7">
+            <div className="mx-auto max-w-[800px]">
+              {conversation.error && (
+                <p className="mb-3 rounded-lg bg-[#fff3f0] px-4 py-2.5 text-sm text-[#a14838]" role="alert">
+                  {conversation.error}
+                </p>
+              )}
+              <form
+                className="rounded-2xl border border-[#e4e8e2] bg-white p-3 shadow-[0_5px_24px_rgba(41,58,47,0.07)] transition focus-within:border-[#b8c8b9] focus-within:shadow-[0_5px_28px_rgba(41,58,47,0.1)]"
+                onSubmit={handleSubmit}
+              >
+                <textarea
+                  aria-label="Message Athena"
+                  className="max-h-40 min-h-10 w-full resize-none bg-transparent px-2 py-2 text-sm leading-6 text-[#344239] outline-none placeholder:text-[#9aa29c]"
+                  onChange={(event) => {
+                    setMessageInput(event.target.value)
+                    event.target.style.height = 'auto'
+                    event.target.style.height = `${Math.min(event.target.scrollHeight, 160)}px`
+                  }}
+                  onKeyDown={handleInputKeyDown}
+                  placeholder="Message Athena…"
+                  ref={textareaRef}
+                  rows={1}
+                  value={messageInput}
+                />
+                <div className="flex items-center justify-between pl-2 pt-1">
+                  <span className="text-[11px] text-[#a0a7a1]">Shift + Enter for a new line</span>
+                  <button
+                    aria-label="Send message"
+                    className="grid size-9 place-items-center rounded-xl bg-[#225b46] text-white transition hover:bg-[#194a38] disabled:cursor-not-allowed disabled:bg-[#d6ddd6]"
+                    disabled={!messageInput.trim() || isSending}
+                    type="submit"
+                  >
+                    <ArrowUp size={18} strokeWidth={2.1} />
+                  </button>
+                </div>
+              </form>
+              <p className="mt-3 text-center text-[10px] text-[#a1a8a2]">Athena can make mistakes. Consider checking important information.</p>
+            </div>
+          </footer>
         </div>
-        <a className="mt-10 inline-flex items-center gap-2 text-sm font-semibold text-[var(--green)]" href="mailto:support@example.com">
-          Account support <ArrowUpRight size={15} />
-        </a>
       </main>
     </div>
   )
