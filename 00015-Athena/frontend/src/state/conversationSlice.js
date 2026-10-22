@@ -73,6 +73,7 @@ const initialState = {
     messages: {},
     currentChat: null,
     latestAiMessage: { content: null, id: null },
+    activeStream: null,
     conversationsStatus: 'idle',
     messagesStatus: {},
     sendStatus: 'idle',
@@ -88,18 +89,13 @@ const conversationSlice = createSlice({
         },
         appendAssistantToken(state, action) {
             const { conversationId, requestId, token } = action.payload
-            const assistantId = `${requestId}-assistant`
-            const assistantMessage = state.messages[conversationId]?.find((message) => message.id === assistantId)
-            if (!assistantMessage) return
+            if (state.activeStream?.requestId !== requestId
+                || state.activeStream.conversationId !== conversationId) return
 
-            assistantMessage.content += token
-            if (state.currentChat === conversationId) {
-                state.latestAiMessage = { content: assistantMessage.content, id: assistantId }
-            }
+            state.latestAiMessage.content += token
         },
         startNewConversation(state) {
             state.currentChat = null
-            state.latestAiMessage = { content: null, id: null }
             state.error = null
         },
     },
@@ -127,7 +123,6 @@ const conversationSlice = createSlice({
             })
             .addCase(fetchConversationMessages.pending, (state, action) => {
                 state.currentChat = action.meta.arg
-                state.latestAiMessage = { content: null, id: null }
                 state.messagesStatus[action.meta.arg] = 'loading'
                 state.error = null
             })
@@ -135,10 +130,6 @@ const conversationSlice = createSlice({
                 const { conversationId, messages } = action.payload
                 state.messages[conversationId] = messages
                 state.messagesStatus[conversationId] = 'succeeded'
-                const latest = messages.findLast((message) => message.role === 'assistant')
-                state.latestAiMessage = latest
-                    ? { content: latest.content, id: latest.id }
-                    : { content: null, id: null }
             })
             .addCase(fetchConversationMessages.rejected, (state, action) => {
                 state.messagesStatus[action.meta.arg] = 'failed'
@@ -169,9 +160,8 @@ const conversationSlice = createSlice({
                     id: `${action.meta.requestId}-user`,
                     conversationId: chatId,
                 })
-                const assistantId = `${action.meta.requestId}-assistant`
-                messages.push({ role: 'assistant', content: '', id: assistantId, conversationId: chatId })
-                state.latestAiMessage = { content: '', id: assistantId }
+                state.latestAiMessage = { content: '', id: null, conversationId: chatId }
+                state.activeStream = { requestId: action.meta.requestId, conversationId: chatId }
             })
             .addCase(sendMessage.fulfilled, (state, action) => {
                 const {
@@ -184,8 +174,11 @@ const conversationSlice = createSlice({
                 } = action.payload
                 const fromId = previousConversationId ?? conversationId
                 const messages = state.messages[fromId] ?? []
-                const userMessage = messages.findLast((message) => message.role === 'user')
-                const assistantMessage = messages.findLast((message) => message.role === 'assistant')
+                const userMessage = messages.find((message) => message.id === `${action.meta.requestId}-user`)
+                const isCurrentStream = state.activeStream?.requestId === action.meta.requestId
+                const assistantContent = isCurrentStream
+                    ? state.latestAiMessage.content
+                    : content
 
                 if (previousConversationId) {
                     state.messages[conversationId] = messages
@@ -207,23 +200,25 @@ const conversationSlice = createSlice({
                     userMessage.id = userMessageId || userMessage.id
                     userMessage.conversationId = conversationId
                 }
-                if (assistantMessage) {
-                    assistantMessage.id = messageId
-                    assistantMessage.content = content
-                    assistantMessage.conversationId = conversationId
+                messages.push({
+                    role: 'assistant',
+                    content: assistantContent,
+                    id: messageId,
+                    conversationId,
+                })
+                if (isCurrentStream) {
+                    state.latestAiMessage = { content: null, id: null, conversationId: null }
+                    state.activeStream = null
                 }
-                state.latestAiMessage = { content, id: messageId }
                 state.sendStatus = 'succeeded'
             })
             .addCase(sendMessage.rejected, (state, action) => {
                 state.sendStatus = 'failed'
                 state.error = action.payload
-                const conversationId = action.meta.arg.conversationId ?? `local-${action.meta.requestId}`
-                const assistantId = `${action.meta.requestId}-assistant`
-                const messages = state.messages[conversationId]
-                const assistantIndex = messages?.findIndex((message) => message.id === assistantId) ?? -1
-                if (assistantIndex !== -1) messages.splice(assistantIndex, 1)
-                if (state.latestAiMessage.id === assistantId) state.latestAiMessage = { content: null, id: null }
+                if (state.activeStream?.requestId === action.meta.requestId) {
+                    state.latestAiMessage = { content: null, id: null, conversationId: null }
+                    state.activeStream = null
+                }
             })
     },
 })
