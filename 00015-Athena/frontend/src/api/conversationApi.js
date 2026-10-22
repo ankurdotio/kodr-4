@@ -22,44 +22,55 @@ function parseEvent(event) {
     return data ? JSON.parse(data) : null
 }
 
-function readStream(stream) {
+async function readStream(stream, onToken) {
     let content = ''
     let id = null
+    let pendingEvent = ''
+    const decoder = new TextDecoder()
+    const reader = stream.getReader()
 
-    for (const event of stream.split(/\r?\n\r?\n/)) {
+    function consumeEvent(event) {
         const payload = parseEvent(event)
-        if (!payload) continue
-        if (typeof payload.token === 'string') content += payload.token
+        if (!payload) return
+        if (typeof payload.token === 'string') {
+            content += payload.token
+            onToken?.(payload.token)
+        }
         if (typeof payload.id === 'string') id = payload.id
         if (payload.error) throw new Error(payload.error)
     }
 
-    return { content, id }
+    try {
+        while (true) {
+            const { done, value } = await reader.read()
+            pendingEvent += done ? decoder.decode() : decoder.decode(value, { stream: true })
+
+            const events = pendingEvent.split(/\r?\n\r?\n/)
+            pendingEvent = events.pop() ?? ''
+            for (const event of events) consumeEvent(event)
+
+            if (done) {
+                if (pendingEvent.trim()) consumeEvent(pendingEvent)
+                break
+            }
+        }
+
+        return { content, id }
+    } finally {
+        reader.releaseLock()
+    }
 }
 
 export async function sendConversationMessage({ content, conversationId, onToken }) {
-    let responseLength = 0
-    let pendingEvent = ''
     const response = await apiClient.post(
         '/chat',
         { content, ...(conversationId && { conversationId }) },
         {
-            responseType: 'text',
-            onDownloadProgress({ event }) {
-                const responseText = event?.currentTarget?.responseText ?? ''
-                const delta = responseText.slice(responseLength)
-                responseLength = responseText.length
-                const events = `${pendingEvent}${delta}`.split(/\r?\n\r?\n/)
-                pendingEvent = events.pop() ?? ''
-
-                for (const item of events) {
-                    const payload = parseEvent(item)
-                    if (typeof payload?.token === 'string') onToken?.(payload.token)
-                }
-            },
+            adapter: 'fetch',
+            responseType: 'stream',
         },
     )
-    const { content: answer, id: messageId } = readStream(response.data)
+    const { content: answer, id: messageId } = await readStream(response.data, onToken)
 
     return {
         conversationId: response.headers['conversation-id'],
