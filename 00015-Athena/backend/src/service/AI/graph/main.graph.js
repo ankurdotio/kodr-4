@@ -39,22 +39,24 @@ const LLMNode = async (state) => {
         aiFullMessage = aiFullMessage ? aiFullMessage.concat(chunk) : chunk
     }
 
+
     await createAssistantMessage({
         conversationId: state.conversationId,
         content: aiFullMessage.content,
-        toolCalls: aiFullMessage.toolCalls.map(toolCall => {
+        toolCalls: aiFullMessage.tool_calls.map(toolCall => {
             return {
                 toolName: toolCall.name,
                 arguments: toolCall.args,
                 tool_id: toolCall.id
             }
-        })
+        }),
+        model: env.bedrockDefaultModel
     })
 
     return {
         messages: [ ...state.messages, new AIMessage({
             content: aiFullMessage.content,
-            tool_calls: aiFullMessage.toolCalls.map(toolCall => {
+            tool_calls: aiFullMessage.tool_calls.map(toolCall => {
                 return {
                     name: toolCall.toolName,
                     args: toolCall.arguments,

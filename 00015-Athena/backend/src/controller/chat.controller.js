@@ -3,10 +3,11 @@ import AppError from '../utils/AppError.js';
 import { sendSuccess } from '../utils/apiResponse.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { generateTitle } from "../service/AI/title.agent.js"
-import { findConversationByIdAndUserId, createConversation } from "../DAO/conversation.dao.js"
+import { findConversationByIdAndUserId, createConversation, findConversationsByUserId } from "../DAO/conversation.dao.js"
 import { findMessagesByConversationId } from "../DAO/message.dao.js"
 import { HumanMessage, AIMessage, ToolMessage } from "langchain"
 import graph from "../service/AI/graph/main.graph.js"
+import { createUserMessage } from "../DAO/message.dao.js"
 
 
 
@@ -80,19 +81,36 @@ export const handleMessage = asyncHandler(async (request, response) => {
     response.setHeader("Conversation-title", conversation.title);
     response.setHeader("Access-Control-Expose-Headers", "Conversation-Id, Conversation-title");
 
-    console.log("Messages: ", messages)
-    console.log("Conversation ID: ", conversation._id.toString())
+
+    await createUserMessage({
+        conversationId: conversation._id.toString(),
+        content: content
+    })
 
     const result = await graph.invoke({
         messages: messages,
         conversationId: conversation._id.toString(),
         onToken: (token) => {
-            console.log("Token: ", token)
+
             response.write(`data: ${JSON.stringify({ token })}\n\n`);
         }
     })
 
-    console.log("Graph Result: ", result)
     response.end()
 
+})
+
+
+/**
+ * Get all the Conversation of the current User
+ * @type {import('express').RequestHandler}
+ */
+export const getConversation = asyncHandler(async (req, res) => {
+    const user = req.user
+
+    const conversations = await findConversationsByUserId(user.id)
+
+    return sendSuccess(res, 200, "Conversation fetched Successfully", {
+        conversations
+    })
 })

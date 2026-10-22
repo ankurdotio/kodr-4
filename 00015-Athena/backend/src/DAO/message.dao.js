@@ -33,7 +33,8 @@ export async function createAssistantMessage(input) {
         usage: {
             inputTokens: input.inputTokens,
             outputTokens: input.outputTokens,
-        }
+        },
+        model: input.model
     });
     return message;
 }

@@ -52,6 +52,15 @@ export async function findConversationByIdAndUserId(conversationId, userId) {
 }
 
 /**
+ * Find all the conversation by the userId
+ * @param {string} userId
+ * @return {Promise<import('mongoose').HydratedDocument<unknown> | null>[]}
+ */
+export async function findConversationsByUserId(userId) {
+    return ConversationModel.find({ userId })
+}
+
+/**
  * Create a conversation
  * @param {{userId: import('mongoose').Types.ObjectId | string, title: string}} input
  * @returns {Promise<import('mongoose').HydratedDocument<unknown>>}
