@@ -67,3 +67,20 @@ export async function createToolMessage(input) {
 export async function findMessagesByConversationId(conversationId) {
     return messageModel.find({ conversationId })
 }
+
+/**
+ * Find user and AI messages to show on the frontend by a conversationId
+* @param {string} conversationId - The ID of the conversation to find messages for.
+* @returns {Promise<import('mongoose').HydratedDocument<unknown>[]>} - An array of message documents for the given conversation ID.
+ */
+export async function findUserAndAssistantMessageByConversationId(conversationId) {
+    return messageModel.find({
+        conversationId,
+        role: {
+            $in: [ "user", "assistant" ]
+        },
+        content: {
+            $ne: ""
+        }
+    })
+}

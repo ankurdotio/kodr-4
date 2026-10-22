@@ -1,4 +1,4 @@
-import { body } from 'express-validator';
+import { body, param } from 'express-validator';
 
 
 /**
@@ -14,4 +14,14 @@ export const chatMessageValidator = [
     body("conversationId")
         .optional()
         .isMongoId().withMessage("Conversation ID must be a valid MongoDB ObjectId").bail(),
+]
+
+
+/**
+ * Validate and normalize chat message fields.
+ * @type {import('express-validator').ValidationChain[]}
+ */
+export const getMessagesValidator = [
+    param("conversation")
+        .isMongoId().withMessage("Conversation ID must be a valid MongoDB ObjectId"),
 ]

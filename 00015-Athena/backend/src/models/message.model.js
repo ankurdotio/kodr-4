@@ -93,6 +93,7 @@ messageSchema.pre('validate', function enforceRoleRules() {
 
 messageSchema.index({ conversationId: 1, createdAt: 1 });
 messageSchema.index({ userId: 1, content: 'text' });
+messageSchema.index({ role: 1, createdAt: 1, content: 1 })
 
 const MessageModel = mongoose.model('Message', messageSchema);
 

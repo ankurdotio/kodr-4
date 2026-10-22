@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { validate } from '../middleware/validate.middleware.js';
-import { chatMessageValidator } from "../validators/chat.validator.js"
-import { handleMessage, getConversation } from "../controller/chat.controller.js"
+import { chatMessageValidator, getMessagesValidator } from "../validators/chat.validator.js"
+import { handleMessage, getConversation,getMessages } from "../controller/chat.controller.js"
 
 
 
@@ -27,6 +27,15 @@ router.post('/', authenticate, chatMessageValidator, validate, handleMessage)
  * @access private
  */
 router.get("/", authenticate, getConversation)
+
+
+/**
+ * @method GET
+ * @description Get all the messages of the conversation by the conversation id
+ * @route /api/chat/:conversation/messages
+ * @access private
+ */
+router.get("/:conversation/messages", authenticate, getMessagesValidator, validate, getMessages)
 
 
 export default router;

@@ -4,10 +4,9 @@ import { sendSuccess } from '../utils/apiResponse.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { generateTitle } from "../service/AI/title.agent.js"
 import { findConversationByIdAndUserId, createConversation, findConversationsByUserId } from "../DAO/conversation.dao.js"
-import { findMessagesByConversationId } from "../DAO/message.dao.js"
 import { HumanMessage, AIMessage, ToolMessage } from "langchain"
 import graph from "../service/AI/graph/main.graph.js"
-import { createUserMessage } from "../DAO/message.dao.js"
+import { createUserMessage, findMessagesByConversationId, findUserAndAssistantMessageByConversationId } from "../DAO/message.dao.js"
 
 
 
@@ -112,5 +111,27 @@ export const getConversation = asyncHandler(async (req, res) => {
 
     return sendSuccess(res, 200, "Conversation fetched Successfully", {
         conversations
+    })
+})
+
+
+/**
+ * Get all the messages of the given conversationID
+ * * @type {import('express').RequestHandler}
+ */
+export const getMessages = asyncHandler(async (req, res) => {
+    const user = req.user
+    const { conversation: conversationId } = req.params
+
+    const conversation = await findConversationByIdAndUserId(conversationId, user.id)
+
+    if (!conversation) {
+        throw AppError(403, "The conversation is not found or you don't have access to it.")
+    }
+
+    const messages = await findUserAndAssistantMessageByConversationId(conversationId)
+
+    return sendSuccess(res, 200, "Messages fetched Successfully", {
+        messages
     })
 })

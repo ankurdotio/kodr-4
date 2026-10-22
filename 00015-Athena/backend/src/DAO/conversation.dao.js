@@ -57,8 +57,10 @@ export async function findConversationByIdAndUserId(conversationId, userId) {
  * @return {Promise<import('mongoose').HydratedDocument<unknown> | null>[]}
  */
 export async function findConversationsByUserId(userId) {
-    return ConversationModel.find({ userId })
+    return await ConversationModel.find({ userId })
 }
+
+
 
 /**
  * Create a conversation
