@@ -40,7 +40,7 @@ const LLMNode = async (state) => {
     }
 
 
-    await createAssistantMessage({
+    const assistantMessage = await createAssistantMessage({
         conversationId: state.conversationId,
         content: aiFullMessage.content,
         toolCalls: aiFullMessage.tool_calls.map(toolCall => {
@@ -52,6 +52,8 @@ const LLMNode = async (state) => {
         }),
         model: env.bedrockDefaultModel
     })
+
+    state.onComplete(assistantMessage._id)
 
     return {
         messages: [ ...state.messages, new AIMessage({
@@ -74,7 +76,9 @@ const LLMNode = async (state) => {
 const state = z.object({
     messages: z.array(z.any()),
     onToken: z.function(),
+    onComplete: z.function(),
     conversationId: z.string(),
+
 })
 
 const graph = new StateGraph(state)

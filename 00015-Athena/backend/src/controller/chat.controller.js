@@ -90,8 +90,10 @@ export const handleMessage = asyncHandler(async (request, response) => {
         messages: messages,
         conversationId: conversation._id.toString(),
         onToken: (token) => {
-
             response.write(`data: ${JSON.stringify({ token })}\n\n`);
+        },
+        onComplete: (id) => {
+            res.write(`data:${JSON.stringify({ id })}`)
         }
     })
 
