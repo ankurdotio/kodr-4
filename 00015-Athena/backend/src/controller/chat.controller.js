@@ -90,7 +90,7 @@ export const handleMessage = asyncHandler(async (request, response) => {
 
     response.flushHeaders();
 
-    await graph.invoke({
+  const graphResult =  await graph.invoke({
         messages: messages,
         conversationId: conversation._id.toString(),
         userId: request.user.id,

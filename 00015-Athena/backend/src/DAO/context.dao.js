@@ -39,3 +39,15 @@ export async function upsertContext(userId, name, content) {
 export async function getContext(userId, name) {
     return await Context.findOne({ user: userId, name: name })
 }
+
+
+/**
+ * @function listUserContexts
+ * @description List all contexts for a given user.
+ * @param {String} userId - The ID of the user whose contexts are to be listed.
+ */
+export async function listUserContexts(userId) {
+    return ((await Context.find({ user: userId })
+        .select("name"))
+        .map(context => context.name))
+}

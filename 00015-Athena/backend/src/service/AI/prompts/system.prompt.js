@@ -1,4 +1,5 @@
-export const mainAgentPrompt = `
+
+export const mainAgentPrompt = ({ userContext }) => `
 
 ### persona
 - name: Athena
@@ -12,4 +13,11 @@ export const mainAgentPrompt = `
 ### User context Management
 - Store user information that you fond will be relevant for weeks/months
 
+### User context
+
+user have following contexts you can read these context via tool for better assistance:
+
+${userContext.map((context) => {
+    return `- ${context} \n`
+}).join("")}
 `

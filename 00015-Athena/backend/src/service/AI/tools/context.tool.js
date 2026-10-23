@@ -21,3 +21,22 @@ export const upsertContextTool = tool(
         })
     }
 )
+
+
+export const readContextTool = tool(
+    async ({ name }, config) => {
+
+        const userId = config.context.userId
+
+        const context = await contextDAO.getContext(userId, name)
+
+        return context.content
+    },
+    {
+        name: "readContext",
+        description: "Read context for a user",
+        schema: z.object({
+            name: z.string().describe("Name of the context")
+        })
+    }
+)
