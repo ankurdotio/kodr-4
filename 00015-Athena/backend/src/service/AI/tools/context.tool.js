@@ -30,7 +30,7 @@ export const readContextTool = tool(
 
         const context = await contextDAO.getContext(userId, name)
 
-        return context.content
+        return context?.content ?? `No context found with name "${name}"`
     },
     {
         name: "readContext",

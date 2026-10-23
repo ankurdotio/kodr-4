@@ -45,13 +45,15 @@ export const sendMessage = createAsyncThunk(
     'conversation/sendMessage',
     async ({ content, conversationId }, { dispatch, rejectWithValue, requestId }) => {
         try {
-            const isTemporary = conversationId?.startsWith('local-')
+            // New chats are stored under a temporary `local-<requestId>` key until the server returns the real ID.
+            const chatId = conversationId ?? `local-${requestId}`
+            const isTemporary = chatId.startsWith('local-')
             const result = await sendConversationMessage({
                 content,
                 conversationId: isTemporary ? null : conversationId,
                 onToken(token) {
                     dispatch(appendAssistantToken({
-                        conversationId: conversationId ?? `local-${requestId}`,
+                        conversationId: chatId,
                         requestId,
                         token,
                     }))
@@ -61,7 +63,7 @@ export const sendMessage = createAsyncThunk(
             if (!result.conversationId) throw new Error('The server did not return a conversation ID.')
             if (!result.messageId) throw new Error('The server did not return an assistant message ID.')
 
-            return { ...result, previousConversationId: isTemporary ? conversationId : null }
+            return { ...result, previousConversationId: isTemporary ? chatId : null }
         } catch (error) {
             return rejectWithValue(requestError(error))
         }
@@ -216,6 +218,15 @@ const conversationSlice = createSlice({
                 state.sendStatus = 'failed'
                 state.error = action.payload
                 if (state.activeStream?.requestId === action.meta.requestId) {
+                    const { content, conversationId } = state.latestAiMessage
+                    if (content && state.messages[conversationId]) {
+                        state.messages[conversationId].push({
+                            role: 'assistant',
+                            content,
+                            id: `${action.meta.requestId}-assistant`,
+                            conversationId,
+                        })
+                    }
                     state.latestAiMessage = { content: null, id: null, conversationId: null }
                     state.activeStream = null
                 }

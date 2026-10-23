@@ -90,19 +90,25 @@ export const handleMessage = asyncHandler(async (request, response) => {
 
     response.flushHeaders();
 
-  const graphResult =  await graph.invoke({
-        messages: messages,
-        conversationId: conversation._id.toString(),
-        userId: request.user.id,
-        onToken: (token) => {
-            response.write(`data: ${JSON.stringify({ token })}\n\n`);
-        },
-        onComplete: (id) => {
-            response.write(`data: ${JSON.stringify({ id })}\n\n`);
-        }
-    })
-
-    response.end()
+    // Headers are already flushed, so errors must be reported as SSE events, not via the error middleware.
+    try {
+        await graph.invoke({
+            messages: messages,
+            conversationId: conversation._id.toString(),
+            userId: request.user.id,
+            onToken: (token) => {
+                response.write(`data: ${JSON.stringify({ token })}\n\n`);
+            },
+            onComplete: (id) => {
+                response.write(`data: ${JSON.stringify({ id })}\n\n`);
+            }
+        })
+    } catch (error) {
+        console.error(error)
+        response.write(`data: ${JSON.stringify({ error: 'Something went wrong while generating the response.' })}\n\n`);
+    } finally {
+        response.end()
+    }
 
 })
 

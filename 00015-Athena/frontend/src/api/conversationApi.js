@@ -25,6 +25,7 @@ function parseEvent(event) {
 async function readStream(stream, onToken) {
     let content = ''
     let id = null
+    let segmentEnded = false
     let pendingEvent = ''
     const decoder = new TextDecoder()
     const reader = stream.getReader()
@@ -33,10 +34,16 @@ async function readStream(stream, onToken) {
         const payload = parseEvent(event)
         if (!payload) return
         if (typeof payload.token === 'string') {
-            content += payload.token
-            onToken?.(payload.token)
+            // A new assistant turn started after a tool call; keep it as a separate paragraph.
+            const token = segmentEnded && content ? `\n\n${payload.token}` : payload.token
+            segmentEnded = false
+            content += token
+            onToken?.(token)
         }
-        if (typeof payload.id === 'string') id = payload.id
+        if (typeof payload.id === 'string') {
+            id = payload.id
+            segmentEnded = true
+        }
         if (payload.error) throw new Error(payload.error)
     }
 

@@ -45,6 +45,7 @@ const LLMNode = async (state) => {
     for await (const chunk of stream) {
         for (const block of chunk.contentBlocks) {
             if (block.type === "text") {
+                console.log(block.text)
                 state.onToken(block.text)
             }
         }
@@ -54,8 +55,9 @@ const LLMNode = async (state) => {
 
     const assistantMessage = await createAssistantMessage({
         conversationId: state.conversationId,
-        content: aiFullMessage.content,
-        toolCalls: aiFullMessage.tool_calls.map(toolCall => {
+        // With tool calls, content is an array of blocks (text + tool_use); persist only the text.
+        content: aiFullMessage.text ?? "",
+        toolCalls: (aiFullMessage.tool_calls ?? []).map(toolCall => {
             return {
                 toolName: toolCall.name,
                 arguments: toolCall.args,

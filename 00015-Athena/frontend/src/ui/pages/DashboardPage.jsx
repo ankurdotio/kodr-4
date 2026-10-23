@@ -201,14 +201,9 @@ function ConversationMessages({ conversationId, scrollTargetRef }) {
 
   return messages.map((message) => (
     <article className={`flex gap-4 ${message.role === 'user' ? 'justify-end' : ''}`} key={message.id}>
-      {message.role === 'assistant' && (
-        <span className="mt-1 grid size-8 shrink-0 place-items-center rounded-full bg-[#e8eee7] text-[#315843]">
-          <Sparkles size={15} />
-        </span>
-      )}
       <div className={message.role === 'user'
-        ? 'max-w-[85%] rounded-2xl rounded-br-md bg-[#f1f3ef] px-5 py-3.5 text-[14px] leading-7 text-[#344239] sm:max-w-[75%]'
-        : 'min-w-0 flex-1 pt-0.5 text-[14px] leading-7 text-[#344239]'}>
+        ? 'max-w-[85%] rounded-2xl rounded-br-md bg-[#f1f3ef] px-5 py-3.5 text-[14px] leading-7 text-[#344239] sm:max-w-[75%] mb-8'
+        : 'min-w-0 flex-1 pt-0.5 text-[14px] leading-7 text-[#344239] mb-4'}>
         {message.content
           ? <Suspense fallback={<p>{message.content}</p>}><MarkdownMessage content={message.content} /></Suspense>
           : <span className="inline-flex items-center gap-2 text-sm text-[#879188]"><span className="size-1.5 animate-pulse rounded-full bg-[#5b866c]" />Thinking…</span>}
@@ -231,9 +226,6 @@ function LatestAssistantMessage({ conversationId, scrollTargetRef }) {
 
   return (
     <article className="flex gap-4">
-      <span className="mt-1 grid size-8 shrink-0 place-items-center rounded-full bg-[#e8eee7] text-[#315843]">
-        <Sparkles size={15} />
-      </span>
       <div className="min-w-0 flex-1 pt-0.5 text-[14px] leading-7 text-[#344239]">
         {latestAiMessage.content
           ? <Suspense fallback={<p>{latestAiMessage.content}</p>}><MarkdownMessage content={latestAiMessage.content} /></Suspense>
@@ -294,7 +286,7 @@ function ConversationPanel({ onSuggestion }) {
   return (
     <section className="min-h-0 flex-1 overflow-y-auto px-5">
       {currentChat ? (
-        <div className="mx-auto flex w-full max-w-[800px] flex-col gap-8 py-10 sm:py-12">
+        <div className="mx-auto flex w-full max-w-[800px] flex-col gap-0 py-10 sm:py-12">
           <ConversationLoadingState conversationId={currentChat} />
           <ConversationMessages conversationId={currentChat} scrollTargetRef={scrollTargetRef} />
           <LatestAssistantMessage conversationId={currentChat} scrollTargetRef={scrollTargetRef} />
