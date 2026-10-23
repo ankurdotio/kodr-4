@@ -93,6 +93,7 @@ export const handleMessage = asyncHandler(async (request, response) => {
     await graph.invoke({
         messages: messages,
         conversationId: conversation._id.toString(),
+        userId: request.user.id,
         onToken: (token) => {
             response.write(`data: ${JSON.stringify({ token })}\n\n`);
         },
