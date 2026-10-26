@@ -8,7 +8,6 @@ import graph from "../service/AI/graph/main.graph.js"
 import { createUserMessage, findMessagesByConversationId, findUserAndAssistantMessageByConversationId } from "../DAO/message.dao.js"
 
 
-
 /**
  * Handle user message and generate AI response.
  * @type {import('express').RequestHandler}
@@ -26,12 +25,8 @@ export const handleMessage = asyncHandler(async (request, response) => {
         }
     }
 
-
-
     if (!conversationId) {
-
         // Create a new conversation if no conversationId is provided
-
 
         const title = await generateTitle(content)
 
@@ -81,7 +76,6 @@ export const handleMessage = asyncHandler(async (request, response) => {
     response.setHeader("Access-Control-Expose-Headers", "Conversation-Id, Conversation-title, User-Message-Id");
 
 
-
     const userMessage = await createUserMessage({
         conversationId: conversation._id.toString(),
         content: content
@@ -109,7 +103,6 @@ export const handleMessage = asyncHandler(async (request, response) => {
     } finally {
         response.end()
     }
-
 })
 
 
