@@ -1,0 +1,19 @@
+services:
+  mongodb:
+    image: mongo:8
+    ports:
+      - "4000:27017"
+    volumes:
+      - mongodb_data:/data/db
+  
+  express-server:
+    image: express-server
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./src:/app/src
+    environment:
+      - RANDOM=${RANDOM:?RANDOM environment variable is not set}
+
+volumes:
+  mongodb_data:
