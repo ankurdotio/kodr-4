@@ -1,6 +1,11 @@
 services:
   mongo:
     image: mongo:8
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
     volumes:
       - url_db:/data/db
     ports:
@@ -10,6 +15,12 @@ services:
 
   redis:
     image: redis:latest
+    command: ["redis-server", "--maxmemory-policy", "volatile-lru"]
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 250M
     ports:
       - 8081:6379
     volumes:
@@ -19,6 +30,11 @@ services:
 
   server:
     image: url-server
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 4G
     ports:
       - 3000:3000
     volumes:

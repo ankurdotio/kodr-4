@@ -1,6 +1,6 @@
 import express from "express"
 import morgan from "morgan"
-
+import indexRoutes from "../routes/index.routes.js"
 const app = express()
 
 
@@ -12,6 +12,8 @@ app.get("/api/health", (req, res) => {
         message: "Server healthy"
     })
 })
+
+app.use("/api", indexRoutes)
 
 
 export default app
