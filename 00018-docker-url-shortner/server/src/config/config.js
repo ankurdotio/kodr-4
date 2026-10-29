@@ -13,5 +13,6 @@ function required(key) {
 
 export default Object.freeze({
     MONGO_URI: required("MONGO_URI"),
-    REDIS_URI: required("REDIS_URI")
+    REDIS_URI: required("REDIS_URI"),
+    URL_STRESS_TEST_MODE: required("URL_STRESS_TEST_MODE")
 })

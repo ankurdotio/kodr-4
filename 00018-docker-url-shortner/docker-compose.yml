@@ -33,8 +33,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "2.0"
-          memory: 4G
+          cpus: "1.0"
+          memory: 2G
     ports:
       - 3000:3000
     volumes:
@@ -42,6 +42,7 @@ services:
     environment:
       - MONGO_URI=${MONGO_URI:? MONGO_UIR is not set}
       - REDIS_URI=${REDIS_URI:? REDIS_URI is not set}
+      - URL_STRESS_TEST_MODE=${URL_STRESS_TEST_MODE:? URL_STRESS_TEST_MODE is not set}
     networks:
       - backend
       - frontend

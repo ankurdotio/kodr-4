@@ -4,6 +4,7 @@ import redis from "../config/redis.js"
 import { validateUrl } from "../validator/url.validator.js"
 import { generateId } from "../utils/id.utils.js"
 import { rateLimit } from "express-rate-limit"
+import config from "../config/config.js"
 
 const router = Router()
 
@@ -11,7 +12,8 @@ const router = Router()
 const getLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     limit: 100, // limit each IP to 100 requests per windowMs
-    message: "Too many requests from this IP, please try again later."
+    message: "Too many requests from this IP, please try again later.",
+    skip: () => config.URL_STRESS_TEST_MODE === "true",
 })
 
 const setLimiter = rateLimit({
@@ -31,11 +33,11 @@ const setLimiter = rateLimit({
  */
 router.post("/", setLimiter, validateUrl, async (req, res) => {
     const { originalUrl } = req.body
-    const shortUrlId = generateId()
+    const shortUrlId = await generateId()
 
     const url = await urlModel.create({
         originalUrl,
-        shortUrlId
+        shortId: shortUrlId
     })
 
     res.status(201).json(url)
@@ -44,15 +46,15 @@ router.post("/", setLimiter, validateUrl, async (req, res) => {
 
 /**
  * @method GET
- * @route /api/url/:shortUrlId
+ * @route /api/url/:shortId
  * @description redirect to the original URL for a given shortened URL ID
  * @access Public
- * @param { shortUrlId: string } The ID of the shortened URL
+ * @param { shortId: string } The ID of the shortened URL
  */
-router.get("/:shortUrlId", getLimiter, async (req, res) => {
-    const { shortUrlId } = req.params
+router.get("/:shortId", getLimiter, async (req, res) => {
+    const { shortId } = req.params
 
-    const urlCache = await redis.get(`url:${shortUrlId}`)
+    const urlCache = await redis.get(`url:${shortId}`)
 
     if (urlCache) {
         if (urlCache === "__NULL__") {
@@ -60,17 +62,21 @@ router.get("/:shortUrlId", getLimiter, async (req, res) => {
         }
 
         const data = JSON.parse(urlCache)
-        return res.redirect(302, data.originalUrl)
+
+        res.redirect(302, data.originalUrl)
+        await redis.hincrby("url_count", shortId, 1)
+        return
     }
 
-    const url = await urlModel.findOne({ shortUrlId })
+    const url = await urlModel.findOne({ shortId })
     if (!url) {
-        await redis.set(`url:${shortUrlId}`, "__NULL__", "EX", 15)
+        await redis.set(`url:${shortId}`, "__NULL__", "EX", 15)
         return res.status(404).json({ message: "URL not found" })
     }
 
-    await redis.set(`url:${shortUrlId}`, JSON.stringify(url), "EX", 5 * 60)
+    await redis.set(`url:${shortId}`, JSON.stringify(url), "EX", 5 * 60)
     res.redirect(302, url.originalUrl)
+    await redis.hincrby("url_count", shortId, 1)
 
 })
 
