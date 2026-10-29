@@ -47,6 +47,46 @@ services:
       - backend
       - frontend
 
+  # Load-testing tools: only started via `docker compose run --rm seed|stress`
+  seed:
+    image: url-stress
+    build: ./server
+    profiles: ["stress"]
+    command: ["node", "scripts/seed.js"]
+    volumes:
+      - ./server/scripts:/app/scripts
+    environment:
+      - MONGO_URI=${MONGO_URI:? MONGO_UIR is not set}
+      - SEED_COUNT=${SEED_COUNT:-10000000}
+    depends_on:
+      - mongo
+    networks:
+      - backend
+
+  stress:
+    image: url-stress
+    build: ./server
+    profiles: ["stress"]
+    command: ["node", "scripts/stress.js"]
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    volumes:
+      - ./server/scripts:/app/scripts
+    environment:
+      - TARGET_URL=http://server:3000
+      - CONNECTIONS=${CONNECTIONS:-100}
+      - DURATION=${DURATION:-30}
+      - PIPELINING=${PIPELINING:-1}
+      - MISS_RATIO=${MISS_RATIO:-0}
+      - HOT_IDS=${HOT_IDS:-0}
+    depends_on:
+      - server
+    networks:
+      - backend
+
   client:
     image: url-client
     ports:
