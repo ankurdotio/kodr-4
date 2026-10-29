@@ -17,6 +17,5 @@ const urlSchema = new mongoose.Schema({
     timestamps: true
 })
 
-urlSchema.index({ shortId: 1 })
 
 export default mongoose.model("Url", urlSchema)

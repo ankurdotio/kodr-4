@@ -1,4 +1,4 @@
-import { Router } from "express"
+import express, { Router } from "express"
 import urlModel from "../model/url.model.js"
 import redis from "../config/redis.js"
 import { validateUrl } from "../validator/url.validator.js"
@@ -31,7 +31,7 @@ const setLimiter = rateLimit({
  * @access Public
  * @body { originalUrl: string } The original URL to shorten
  */
-router.post("/", setLimiter, validateUrl, async (req, res) => {
+router.post("/", express.json(), setLimiter, validateUrl, async (req, res) => {
     const { originalUrl } = req.body
     const shortUrlId = await generateId()
 
@@ -61,22 +61,22 @@ router.get("/:shortId", getLimiter, async (req, res) => {
             return res.status(404).json({ message: "URL not found" })
         }
 
-        const data = JSON.parse(urlCache)
-
-        res.redirect(302, data.originalUrl)
+        res.redirect(302, urlCache)
         await redis.hincrby("url_count", shortId, 1)
         return
     }
 
-    const url = await urlModel.findOne({ shortId })
+    const url = await urlModel.findOne({ shortId }).select("-_id originalUrl").lean()
     if (!url) {
         await redis.set(`url:${shortId}`, "__NULL__", "EX", 15)
         return res.status(404).json({ message: "URL not found" })
     }
 
-    await redis.set(`url:${shortId}`, JSON.stringify(url), "EX", 5 * 60)
     res.redirect(302, url.originalUrl)
-    await redis.hincrby("url_count", shortId, 1)
+    await redis.pipeline()
+        .set(`url:${shortId}`, url.originalUrl, "EX", 5 * 60)
+        .hincrby("url_count", shortId, 1)
+        .exec()
 
 })
 
