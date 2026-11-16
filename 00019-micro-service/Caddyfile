@@ -1,0 +1,13 @@
+:80 {
+	handle /api/payment/* {
+		reverse_proxy payment:3000
+	}
+
+	handle /api/course/* {
+		reverse_proxy course:3001
+	}
+
+	handle {
+		respond "Not found" 404
+	}
+}

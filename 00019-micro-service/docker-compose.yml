@@ -1,0 +1,30 @@
+services:
+  payment:
+    build: ./payment
+    restart: unless-stopped
+    volumes:
+      - ./payment:/app
+      - payment_node_modules:/app/node_modules
+
+  course:
+    build: ./course
+    restart: unless-stopped
+    volumes:
+      - ./course:/app
+      - course_node_modules:/app/node_modules
+
+  gateway:
+    image: caddy:2-alpine
+    ports:
+      - "${GATEWAY_PORT:-8080}:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - payment
+      - course
+    restart: unless-stopped
+
+
+volumes:
+  payment_node_modules:
+  course_node_modules:
