@@ -1,0 +1,26 @@
+apiVersion: skaffold/v4beta13
+kind: Config
+metadata:
+  name: cloud-agent
+build:
+  local:
+    push: false
+    useDockerCLI: true
+  tagPolicy:
+    inputDigest: {}
+  artifacts:
+    - image: cloud-agent-backend
+      context: backend
+      docker:
+        dockerfile: Dockerfile
+manifests:
+  rawYaml:
+    - k8s/deployment.yaml
+    - k8s/service.yaml
+    - k8s/secret.local.yaml
+    - k8s/ingress.yaml
+deploy:
+  kubeContext: docker-desktop
+  kubectl: {}
+  statusCheck: true
+  statusCheckDeadlineSeconds: 120
