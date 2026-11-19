@@ -8,6 +8,9 @@ import { errorMiddleware } from './middleware/error.middleware.js';
 
 export const app = express();
 app.disable('x-powered-by');
+
+app.use(requestLogger);
+
 app.use(express.json({
   limit: '1mb',
   verify(req, res, buffer) {
@@ -16,10 +19,7 @@ app.use(express.json({
 }));
 app.use(express.urlencoded({ extended: true, limit: '16kb' }));
 app.use(cookieParser());
-if (env.nodeEnv !== 'test') {
-  // Avoid logging OAuth codes, state, cookies, or bearer tokens.
-  app.use(requestLogger);
-}
+
 app.use('/api/v1', routes);
 app.use(notFound);
 app.use(errorMiddleware);
