@@ -1,0 +1,44 @@
+name: cloud-agent-pod
+
+services:
+  workshop:
+    build: ./workshop
+    command: ["node", "--watch", "/server/src/server.js"]
+    environment:
+      NODE_ENV: development
+      WORKSHOP_DIR: /workshop
+    volumes:
+      - ./workshop/src:/server/src:ro
+      - workshop-data:/workshop
+    expose:
+      - "4000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
+  agent:
+    build: ./agent
+    # --watch keeps the dev container alive and reruns the agent when source files change.
+    command: ["node", "--watch", "main.js"]
+    env_file:
+      - path: ./agent/.env
+        required: false
+    environment:
+      NODE_ENV: development
+      WORKSHOP_DIR: /workshop
+      WORKSHOP_SERVER_URL: http://workshop:4000
+    volumes:
+      - ./agent/main.js:/app/main.js:ro
+      - ./agent/src:/app/src:ro
+      - workshop-data:/workshop
+    depends_on:
+      workshop:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  workshop-data:

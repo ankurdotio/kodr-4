@@ -1,0 +1,20 @@
+{
+  "name": "workshop-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "node-pty": "^1.1.0"
+  },
+  "allowScripts": {
+    "node-pty@1.1.0": true
+  }
+}

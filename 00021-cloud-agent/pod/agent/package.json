@@ -2,18 +2,23 @@
   "name": "agent",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "main.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test",
+    "start": "node main.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "dependencies": {
     "@langchain/openai": "^1.8.4",
     "cohere-ai": "^8.3.1",
     "dotenv": "^18.0.10",
-    "langchain": "^1.6.7"
+    "langchain": "^1.6.7",
+    "zod": "^4.6.7"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }
