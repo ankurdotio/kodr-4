@@ -40,20 +40,66 @@ after(async () => {
     await fs.rm(outside, { recursive: true, force: true })
 })
 
-test("creates, reads, and updates files in the workshop", async () => {
-    await tools.createFileTool.invoke({ path: "src/app.js", content: "const value = 1\n" })
-    await assert.rejects(tools.createWorkshopFile({ path: "src/app.js", content: "" }), /EEXIST/)
-    await tools.updateFileTool.invoke({ path: "src/app.js", oldText: "1", newText: "2" })
-    assert.equal(await tools.readFileTool.invoke({ path: "src/app.js" }), "const value = 2\n")
-    await tools.updateWorkshopFile({ path: "src/app.js", content: "replaced" })
-    assert.equal(await fs.readFile(path.join(dir, "src/app.js"), "utf8"), "replaced")
+test("creates, reads, and updates multiple files in one call", async () => {
+    const created = await tools.createFilesTool.invoke({ files: [
+        { path: "src/a.js", content: "const a = 1\nconst b = 1\n" },
+        { path: "src/b.js", content: "b" },
+    ] })
+    assert.deepEqual(created.created.map((file) => file.path), ["src/a.js", "src/b.js"])
+
+    await tools.updateFilesTool.invoke({ files: [
+        { path: "src/a.js", edits: [{ oldText: "a = 1", newText: "a = 2" }, { oldText: "b = 1", newText: "b = 3" }] },
+        { path: "src/b.js", content: "replaced" },
+    ] })
+
+    const read = await tools.readFilesTool.invoke({ paths: ["src/a.js", "src/b.js", "missing.js"] })
+    assert.deepEqual(read.files.slice(0, 2), [
+        { path: "src/a.js", content: "const a = 2\nconst b = 3\n" },
+        { path: "src/b.js", content: "replaced" },
+    ])
+    assert.match(read.files[2].error, /ENOENT/)
+})
+
+test("writes nothing when any file in a batch is invalid", async () => {
+    await assert.rejects(tools.createWorkshopFiles({ files: [
+        { path: "batch/new.js", content: "x" },
+        { path: "src/a.js", content: "x" },
+    ] }), /already exists/)
+    await assert.rejects(fs.access(path.join(dir, "batch/new.js")))
+
+    await assert.rejects(tools.updateWorkshopFiles({ files: [
+        { path: "src/b.js", content: "changed" },
+        { path: "src/a.js", edits: [{ oldText: "not there", newText: "x" }] },
+    ] }), /found 0 matches/)
+    assert.equal(await fs.readFile(path.join(dir, "src/b.js"), "utf8"), "replaced")
+
+    await assert.rejects(tools.createWorkshopFiles({ files: [
+        { path: "dup.js", content: "1" },
+        { path: "./dup.js", content: "2" },
+    ] }), /more than once/)
 })
 
 test("rejects paths outside the workshop", async () => {
     for (const requested of ["../x", "/etc/passwd", "link/x.txt", "."]) {
-        await assert.rejects(tools.createWorkshopFile({ path: requested, content: "x" }), requested)
+        await assert.rejects(tools.createWorkshopFiles({ files: [{ path: requested, content: "x" }] }), requested)
     }
     assert.deepEqual(await fs.readdir(outside), [])
+    await assert.rejects(tools.listWorkshopFiles({ path: ".." }))
+})
+
+test("lists workshop files without expanding ignored folders or symlinks", async () => {
+    await fs.mkdir(path.join(dir, "node_modules/pkg"), { recursive: true })
+    const all = await tools.listFilesTool.invoke({})
+    assert.deepEqual(all.entries, [
+        { path: "link", type: "symlink" },
+        { path: "node_modules/", type: "directory", skipped: true },
+        { path: "src/", type: "directory" },
+        { path: "src/a.js", type: "file", size: 24 },
+        { path: "src/b.js", type: "file", size: 8 },
+    ])
+    const src = await tools.listWorkshopFiles({ path: "src", recursive: false })
+    assert.deepEqual(src.entries.map((entry) => entry.path), ["src/a.js", "src/b.js"])
+    assert.equal(all.truncated, false)
 })
 
 test("sends commands to the workshop server", async () => {
