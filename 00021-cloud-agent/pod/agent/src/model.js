@@ -10,3 +10,5 @@ const model = new ChatOpenAI({
         baseURL: "https://api.cohere.ai/compatibility/v1"
     }
 })
+
+export default model
