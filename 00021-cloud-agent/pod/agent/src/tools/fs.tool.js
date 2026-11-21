@@ -7,7 +7,7 @@ import env from "../config/env.js"
 const MAX_READ_BYTES = 1_000_000
 const MAX_BATCH_FILES = 50
 const MAX_LIST_ENTRIES = 2_000
-const IGNORED_DIRS = new Set(["node_modules", ".git"])
+const IGNORED_DIRS = new Set([ "node_modules", ".git" ])
 const workshopRoot = path.resolve(env.WORKSHOP_DIR)
 
 const filePath = z.string().min(1).describe("Path relative to the workshop folder, e.g. src/index.js")
@@ -241,4 +241,4 @@ export const updateFilesTool = tool(updateWorkshopFiles, {
     }),
 })
 
-export const fsTools = [listFilesTool, readFilesTool, createFilesTool, updateFilesTool]
+export const fsTools = [ listFilesTool, readFilesTool, createFilesTool, updateFilesTool ]
