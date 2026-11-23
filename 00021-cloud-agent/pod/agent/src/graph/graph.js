@@ -33,7 +33,7 @@ const graphState = z.object({
 
 
 
-const graph = new StateGraph(graphState)
+export const graph = new StateGraph(graphState)
     .addNode("main", MainNode)
     .addNode("planner", PlannerNode)
     .addNode("test", TestNode)

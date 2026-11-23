@@ -1,7 +1,7 @@
 import path from 'node:path';
 
 function integer(name, fallback, min, max) {
-  const value = Number(process.env[name] ?? fallback);
+  const value = Number(process.env[ name ] ?? fallback);
   if (!Number.isInteger(value) || value < min || value > max) {
     throw new Error(`${name} must be an integer between ${min} and ${max}`);
   }
