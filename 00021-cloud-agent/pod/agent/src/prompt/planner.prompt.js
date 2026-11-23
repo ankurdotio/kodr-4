@@ -100,7 +100,7 @@ Main's changes are still in the working tree. Choose one:
 - Start over: the approach was wrong from the beginning. Revert everything with git restore . and git clean -fd, then follow the new plan.
 
 # Step 3: Write the revised plan
-Return three fields: plan, tasks and status.
+Return Two fields: plan, tasks.
 
 plan: a markdown string with these sections, in this order:
 - What went wrong and what changes: the root cause in two or three sentences, quoting the actual error from the reports, and exactly how this plan differs from the last one. If it doesn't differ in substance, it is not a new plan.
