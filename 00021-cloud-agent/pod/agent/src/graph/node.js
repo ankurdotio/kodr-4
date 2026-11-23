@@ -5,6 +5,7 @@ import model from "../model.js"
 import { fsTools, listFilesTool, readFilesTool } from "../tools/fs.tool.js"
 import { cliTools } from "../tools/cli.tool.js"
 import { mainAgentSystemPrompt } from "../prompt/main.prompt.js";
+import { testSystemPrompt } from "../prompt/test.prompt.js"
 
 /**
  * {
@@ -16,12 +17,13 @@ import { mainAgentSystemPrompt } from "../prompt/main.prompt.js";
  *  tasks:[
  *  { 
  *      task: String,
- *      status: Queue | InProgress | Done | Failed
  *      subTasks?: Array
  *   }
  *  ],
  *  mainResults: String,
- *  testResults: String
+ *  testResults: String,
+ *  testFailedCount: Number,
+ *  replannedCount: Number | (max 1)
  * }
  */
 
@@ -32,6 +34,8 @@ export const PlannerNode = async (state, config) => {
     const plan = state.plan || ""
     const userInput = state.userInput || ""
     const testResults = state.testResults || ""
+    const replannedCount = plan ? (state.replannedCount || 0) + 1 : 0
+    const blockers = Array.isArray(state.blockers) ? state.blockers : []
 
 
     const outputFormat = z.object({
@@ -65,16 +69,18 @@ export const PlannerNode = async (state, config) => {
         return {
             plannerHistory: plannerHistory,
             plan: response.structuredResponse.plan,
-            tasks: response.structuredResponse.tasks
+            tasks: response.structuredResponse.tasks,
+            replannedCount,
+            testFailedCount: 0
         }
-
     }
 
     const messages = [
         ...plannerHistory,
         new HumanMessage(JSON.stringify({
             previousPlan: plan,
-            testResults
+            testResults,
+            blockers,
         }, null, 2))
     ]
 
@@ -85,21 +91,23 @@ export const PlannerNode = async (state, config) => {
     return {
         plannerHistory,
         plan: response.structuredResponse.plan,
-        tasks: response.structuredResponse.tasks
+        tasks: response.structuredResponse.tasks,
+        replannedCount,
+        testFailedCount: 0
     }
 
 }
 
-export const MainNode = async (state) => {
+export const MainNode = async (state, config) => {
     const mainHistory = Array.isArray(state.mainHistory) ? state.mainHistory : []
     const tasks = Array.isArray(state.tasks) ? state.tasks : []
     const testerFeedback = state.testResult || state.testResults || ""
 
     const mainOutputFormat = z.object({
         result: z.string().describe("A concise report of the implementation and verification"),
-        completedTasks: z.array(z.string()).describe("The plan tasks completed during this run"),
+        tasks: z.array(z.string()).describe("The plan tasks completed, incompleted , failed or blocked during this run"),
         verification: z.array(z.string()).describe("Verification commands run and their outcomes"),
-        blocked: z.boolean().describe("Whether an unresolved blocker prevented completion"),
+        blockers: z.array(z.string()).describe("List of blockers encountered during this run"),
     })
 
     const agent = createAgent({
@@ -131,5 +139,56 @@ export const MainNode = async (state) => {
             ...response.messages
         ],
         mainResults: report.result,
+        tasks: report.tasks,
+        blockers: report.blockers,
     }
 }
+
+export const TestNode = async (state, config) => {
+    const {
+        plan,
+        userInput,
+        mainResults,
+        testHistory,
+        testFailedCount,
+        blockers,
+    } = state
+
+    const outputFormat = z.object({
+        testResults: z.string().describe("The results of the tests run by the Main agent"),
+        status: z.boolean().describe("Whether the tests passed or failed")
+    })
+
+    const agent = createAgent({
+        model,
+        tools: [ listFilesTool, readFilesTool, ...cliTools ],
+        responseFormat: outputFormat,
+    })
+
+    const testAgentMessages = testHistory.length > 0 ? testHistory : [ new SystemMessage(testSystemPrompt) ]
+
+
+    const context = new HumanMessage(JSON.stringify({
+        plan,
+        userInput,
+        mainResults,
+        blockers
+    }))
+
+    const agentResponse = await agent.invoke({
+        messages: [
+            ...testAgentMessages,
+            context
+        ]
+    })
+
+
+    return {
+        testHistory: agentResponse.messages,
+        testResults: agentResponse.structuredResponse?.testResults || "",
+        status: agentResponse.structuredResponse?.status || false,
+        testFailedCount: agentResponse.structuredResponse?.status === false ? (testFailedCount || 0) + 1 : testFailedCount || 0,
+        testStatus: agentResponse.structuredResponse?.status || false
+    }
+}
+
