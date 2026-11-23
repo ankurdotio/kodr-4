@@ -37,6 +37,7 @@ const graph = new StateGraph(graphState)
     .addNode("main", MainNode)
     .addNode("planner", PlannerNode)
     .addNode("test", TestNode)
+    .addEdge(START, "planner")
     .addEdge("planner", "main")
     .addEdge("main", "test")
     .addConditionalEdges("test", (state, config) => {

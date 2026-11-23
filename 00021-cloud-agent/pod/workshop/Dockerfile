@@ -1,4 +1,4 @@
-# Full Debian image includes the build tools node-pty needs and common CLIs for workshop commands.
+# Full Debian image includes common tools for workshop commands.
 FROM node:22-bookworm
 WORKDIR /server
 COPY package.json package-lock.json ./

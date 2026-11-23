@@ -238,6 +238,83 @@ Activity is installation-scoped, contains only delivery summaries (not code or r
 payloads), is capped at the latest 50 events, and expires after 30 days via MongoDB
 TTL. Duplicate delivery IDs are idempotent.
 
+## Agent and workshop containers
+
+The agent and workshop share a volume mounted at `/workshop`. The agent edits
+files there, but its `run_command` tool sends HTTP requests to
+`http://workshop:4000/commands`; commands execute in the **workshop container**,
+not in the agent container. The server lives in `pod/workshop` and runs as the
+non-root `node` user, with its source outside the shared volume at `/server`.
+
+Start just the command server, or both containers:
+
+```sh
+docker compose -f pod/compose.yaml up --build -d workshop
+# Configure pod/agent/.env with the agent's model credentials before starting it.
+docker compose -f pod/compose.yaml up --build
+```
+
+Port 4000 is internal to the Compose network, not published on the host. From
+a client on that network:
+
+```sh
+curl -sS http://workshop:4000/health
+curl -sS http://workshop:4000/commands \
+  -H 'Content-Type: application/json' \
+  -d '{"command":"npm test","cwd":"my-repository","timeoutMs":120000}'
+```
+
+`POST /commands` accepts a Bash `command`, optional `cwd` relative to `/workshop`
+(default `"."`), and optional `timeoutMs` (default 120000). The working directory
+must exist and resolve inside `/workshop`, including through symlinks. Each
+request starts a fresh shell; `cd` and exported variables do not persist.
+
+Responses have the form:
+
+```json
+{"success":true,"data":{"exitCode":0,"signal":null,"output":"tests passed\n","timedOut":false,"truncated":false,"durationMs":42,"cwd":"my-repository"}}
+```
+
+Output combines stdout and stderr from separate pipes (their relative ordering
+is not guaranteed), removes ANSI escapes, and normalizes newlines. Commands run
+without a terminal or interactive stdin, so terminal-dependent programs may
+behave differently. A nonzero command exit is still HTTP 200;
+inspect `exitCode` and `timedOut` to determine command success. Timeouts kill
+the shell's process group and return `exitCode: null`. Invalid requests return
+4xx with `{"success":false,"message":"..."}`; unexpected server errors return 500.
+
+Server environment variables:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `PORT` | `4000` | HTTP listen port on all interfaces |
+| `WORKSHOP_DIR` | `/workshop` | Shared workspace root |
+| `DEFAULT_TIMEOUT_MS` | `120000` | Timeout when omitted by the client |
+| `MAX_TIMEOUT_MS` | `600000` | Largest accepted timeout; minimum request timeout is 1000 |
+| `MAX_OUTPUT_BYTES` | `1000000` | Captured output byte limit; remaining output is discarded |
+| `MAX_CONCURRENT_COMMANDS` | `4` | Active command limit; excess requests return 429 |
+
+Keep the default timeout at or below the maximum. JSON request bodies are
+limited to 64 KiB, and commands to 10000 characters. The agent's
+`WORKSHOP_SERVER_URL` defaults to `http://workshop:4000`; use
+`http://127.0.0.1:4000` when the containers share a Kubernetes pod network.
+
+**Isolation boundary:** this API intentionally executes arbitrary shell commands
+and has no authentication. Do not publish it publicly or attach untrusted
+clients. Working-directory validation is not a filesystem sandbox: repository
+code can access anything available to the workshop user, including its network.
+Keep agent credentials, host mounts, and the Docker socket out of the workshop
+container. The shared volume is also writable by repository code, so the agent
+must treat its contents as untrusted. Container separation alone is not a
+complete sandbox for hostile workloads.
+
+Verify the server and its agent client:
+
+```sh
+npm --prefix pod/workshop test
+npm --prefix pod/agent test
+```
+
 ## Design and verification
 
 The UI follows the Google Stitch **Cloud Agent** project: monochrome surfaces,

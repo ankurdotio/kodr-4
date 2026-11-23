@@ -1,6 +1,7 @@
+import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
-import pty from 'node-pty';
 
 export class CommandError extends Error {
   constructor(statusCode, message) {
@@ -14,7 +15,7 @@ const ANSI = /\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~]|\][^\x07\x1B]*(?:\x07|\x1B\\)
 
 export function isInside(root, target) {
   const relative = path.relative(root, target);
-  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+  return relative === '' || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
 }
 
 /** Resolve a working directory, following symlinks so it cannot escape the workshop. */
@@ -36,7 +37,7 @@ export async function resolveWorkingDirectory(root, requested = '.') {
 }
 
 /**
- * Run one shell command in a pseudo-terminal inside the workshop.
+ * Run one shell command inside the workshop.
  * @returns {Promise<{exitCode: number|null, signal: number|null, output: string, timedOut: boolean, truncated: boolean, durationMs: number}>}
  */
 export function runCommand({ command, cwd, timeoutMs, maxOutputBytes, env = process.env }) {
@@ -46,33 +47,26 @@ export function runCommand({ command, cwd, timeoutMs, maxOutputBytes, env = proc
     let bytes = 0;
     let truncated = false;
     let timedOut = false;
-    let child;
-    try {
-      child = pty.spawn('/bin/bash', ['-lc', command], {
-        name: 'xterm-256color',
-        cols: 200,
-        rows: 50,
-        cwd,
-        env: { ...env, PWD: cwd, TERM: 'xterm-256color' },
-      });
-    } catch (error) {
-      reject(error);
-      return;
-    }
+    const child = spawn('/bin/bash', ['-lc', command], {
+      cwd,
+      env: { ...env, PWD: cwd, TERM: 'xterm-256color' },
+      detached: true,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
 
     const timer = setTimeout(() => {
       timedOut = true;
-      // The PTY child leads its own process group; kill the group so background children stop too.
       try {
         process.kill(-child.pid, 'SIGKILL');
-      } catch {
-        try { child.kill('SIGKILL'); } catch { /* already exited */ }
+      } catch (error) {
+        if (error.code !== 'ESRCH') reject(error);
       }
+      child.stdout.destroy();
+      child.stderr.destroy();
     }, timeoutMs);
 
-    child.onData((data) => {
+    const collect = (chunk) => {
       if (truncated) return;
-      const chunk = Buffer.from(data);
       if (bytes + chunk.length > maxOutputBytes) {
         chunks.push(chunk.subarray(0, maxOutputBytes - bytes));
         bytes = maxOutputBytes;
@@ -81,13 +75,19 @@ export function runCommand({ command, cwd, timeoutMs, maxOutputBytes, env = proc
       }
       chunks.push(chunk);
       bytes += chunk.length;
+    };
+    child.stdout.on('data', collect);
+    child.stderr.on('data', collect);
+    child.once('error', (error) => {
+      clearTimeout(timer);
+      reject(error);
     });
 
-    child.onExit(({ exitCode, signal }) => {
+    child.once('close', (exitCode, signal) => {
       clearTimeout(timer);
       resolve({
         exitCode: timedOut ? null : exitCode,
-        signal: signal || null,
+        signal: signal ? os.constants.signals[signal] : null,
         output: Buffer.concat(chunks).toString('utf8').replace(ANSI, '').replace(/\r\n?/g, '\n'),
         timedOut,
         truncated,

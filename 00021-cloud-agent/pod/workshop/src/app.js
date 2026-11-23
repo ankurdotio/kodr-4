@@ -52,8 +52,11 @@ export function createServer(config) {
   let running = 0;
 
   return http.createServer(async (req, res) => {
-    const { pathname } = new URL(req.url, 'http://workshop');
     try {
+      if (!URL.canParse(req.url, 'http://workshop')) {
+        throw new CommandError(400, 'Invalid request URL');
+      }
+      const { pathname } = new URL(req.url, 'http://workshop');
       if (req.method === 'GET' && pathname === '/health') {
         send(res, 200, { success: true, data: { status: 'ok', workshopDir: config.workshopDir } });
         return;
