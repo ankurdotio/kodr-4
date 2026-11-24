@@ -61,16 +61,37 @@ export const PlannerNode = async (state, config) => {
             new HumanMessage(userInput)
         ]
 
-        const response = await agent.invoke({
-            messages
-        })
+        let finalResponse = null
 
-        plannerHistory.push(...response.messages)
+        const stream = await agent.stream({
+            messages
+        },
+            {
+                streamMode: [ "messages", "values" ]
+            }
+        )
+
+
+        for await (const [ mode, chunk ] of stream) {
+            if (mode === "values") finalResponse = chunk
+
+            if (mode === "messages") config.configurable.emitEvent({
+                agent: "planner",
+                content: {
+                    tasks: finalResponse?.tasks || [],
+                    plan: finalResponse?.plan || ""
+                }
+            })
+        }
+
+
+
+        plannerHistory.push(...finalResponse?.messages)
 
         return {
             plannerHistory: plannerHistory,
-            plan: response.structuredResponse.plan,
-            tasks: response.structuredResponse.tasks,
+            plan: finalResponse?.plan || "",
+            tasks: finalResponse?.tasks || [],
             replannedCount,
             testFailedCount: 0
         }
@@ -85,14 +106,29 @@ export const PlannerNode = async (state, config) => {
         }, null, 2))
     ]
 
-    const response = await agent.invoke({
+    const stream = await agent.stream({
         messages
+    }, {
+        streamMode: [ "messages", "values" ]
     })
 
+
+    for await (const [ mode, chunk ] of stream) {
+        if (mode === "values") finalResponse = chunk
+
+        if (mode === "messages") config.configurable.emitEvent({
+            agent: "planner",
+            content: {
+                tasks: finalResponse?.tasks || [],
+                plan: finalResponse?.plan || ""
+            }
+        })
+    }
+
     return {
-        plannerHistory,
-        plan: response.structuredResponse.plan,
-        tasks: response.structuredResponse.tasks,
+        plannerHistory: [ ...finalResponse?.messages ],
+        plan: finalResponse?.plan || "",
+        tasks: finalResponse?.tasks || [],
         replannedCount,
         testFailedCount: 0
     }
