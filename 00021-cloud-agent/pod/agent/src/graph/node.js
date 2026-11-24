@@ -67,19 +67,19 @@ export const PlannerNode = async (state, config) => {
             messages
         },
             {
-                streamMode: [ "messages", "values" ]
+                streamMode: [ "updates", "values" ]
             }
         )
 
 
         for await (const [ mode, chunk ] of stream) {
-            if (mode === "values") finalResponse = chunk
+            if (mode === "updates") finalResponse = chunk.model_request
 
-            if (mode === "messages") config.configurable.emitEvent({
+            if (mode === "updates") config.configurable.emitEvent({
                 agent: "planner",
                 content: {
-                    tasks: finalResponse?.tasks || [],
-                    plan: finalResponse?.plan || ""
+                    tasks: chunk.model_request?.structuredResponse?.tasks || [],
+                    plan: chunk.model_request?.structuredResponse?.plan || ""
                 }
             })
         }
@@ -90,8 +90,8 @@ export const PlannerNode = async (state, config) => {
 
         return {
             plannerHistory: plannerHistory,
-            plan: finalResponse?.plan || "",
-            tasks: finalResponse?.tasks || [],
+            plan: finalResponse?.structuredResponse?.plan || "",
+            tasks: finalResponse?.structuredResponse?.tasks || [],
             replannedCount,
             testFailedCount: 0
         }
@@ -109,26 +109,20 @@ export const PlannerNode = async (state, config) => {
     const stream = await agent.stream({
         messages
     }, {
-        streamMode: [ "messages", "values" ]
+        streamMode: [ "updates", "values" ]
     })
 
 
     for await (const [ mode, chunk ] of stream) {
         if (mode === "values") finalResponse = chunk
 
-        if (mode === "messages") config.configurable.emitEvent({
-            agent: "planner",
-            content: {
-                tasks: finalResponse?.tasks || [],
-                plan: finalResponse?.plan || ""
-            }
-        })
+        if (mode === "updates") console.log(chunk)
     }
 
     return {
         plannerHistory: [ ...finalResponse?.messages ],
-        plan: finalResponse?.plan || "",
-        tasks: finalResponse?.tasks || [],
+        plan: finalResponse?.structuredResponse?.plan || "",
+        tasks: finalResponse?.structuredResponse?.tasks || [],
         replannedCount,
         testFailedCount: 0
     }
@@ -161,18 +155,33 @@ export const MainNode = async (state, config) => {
         testFailedCount: state.testFailedCount || 0,
     }
 
-    const response = await agent.invoke({
+    let response = null
+
+    const stream = await agent.stream({
         messages: [
             new SystemMessage(mainAgentSystemPrompt),
             new HumanMessage(JSON.stringify(context, null, 2)),
         ],
+    }, {
+        streamMode: [ "updates", "values" ]
     })
 
-    const report = response.structuredResponse || response
+    for await (const [ mode, chunk ] of stream) {
+        if (mode === "values") response = chunk
+
+        if (mode === "updates") config.configurable.emitEvent({
+            agent: "main",
+            content: {
+                message: chunk
+            }
+        })
+    }
+
+    const report = response?.structuredResponse || response
 
     return {
         mainHistory: [
-            ...response.messages
+            ...response?.messages
         ],
         mainResults: report.result,
         blockers: report.blockers,
@@ -210,20 +219,35 @@ export const TestNode = async (state, config) => {
         blockers
     }))
 
-    const agentResponse = await agent.invoke({
+    let response = null
+
+    const stream = await agent.stream({
         messages: [
             ...testAgentMessages,
             context
         ]
+    }, {
+        streamMode: [ "updates", "values" ]
     })
+
+    for await (const [ mode, chunk ] of stream) {
+        if (mode === "values") response = chunk
+
+        if (mode === "updates") config.configurable.emitEvent({
+            agent: "test",
+            content: {
+                message: chunk
+            }
+        })
+    }
 
 
     return {
-        testHistory: agentResponse.messages,
-        testResults: agentResponse.structuredResponse?.testResults || "",
-        status: agentResponse.structuredResponse?.status || false,
-        testFailedCount: agentResponse.structuredResponse?.status === false ? (testFailedCount || 0) + 1 : testFailedCount || 0,
-        testStatus: agentResponse.structuredResponse?.status || false
+        testHistory: response?.messages,
+        testResults: response?.structuredResponse?.testResults || "",
+        status: response?.structuredResponse?.status || false,
+        testFailedCount: response?.structuredResponse?.status === false ? (testFailedCount || 0) + 1 : testFailedCount || 0,
+        testStatus: response?.structuredResponse?.status || false
     }
 }
 
