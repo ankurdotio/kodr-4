@@ -17,6 +17,7 @@ export async function requireAuth(req, res, next) {
   const user = await findUserById(claims.id);
   if (!user) throw new AppError(401, 'Authentication required');
   req.user = user;
+  req.authExpiresAt = claims.exp * 1000;
   next();
 }
 

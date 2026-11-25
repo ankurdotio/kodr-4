@@ -1,7 +1,7 @@
 import * as z from "zod"
 import { freshSystemPromptForPlanner, replanSystemPrompt } from "../prompt/planner.prompt.js"
 import { SystemMessage, HumanMessage, AIMessage, createAgent, providerStrategy } from "langchain"
-import model, { mistralMedium, nvidiaUltra } from "../model.js"
+import model, { nvidiaUltra } from "../model.js"
 import { fsTools, listFilesTool, readFilesTool } from "../tools/fs.tool.js"
 import { cliTools } from "../tools/cli.tool.js"
 import { mainAgentSystemPrompt } from "../prompt/main.prompt.js";

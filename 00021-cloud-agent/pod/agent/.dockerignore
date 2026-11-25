@@ -3,3 +3,6 @@ Dockerfile
 node_modules
 dist
 .envtest
+.env
+.env.*
+*.pem

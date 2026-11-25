@@ -32,11 +32,12 @@ export async function findGithubInstallation(accessToken, installationId) {
   throw new AppError(502, 'Too many GitHub installations to verify');
 }
 
-/** List repositories available to a verified GitHub App installation.
- * @param {number} installationId Installation ID.
- * @returns {Promise<object[]>} Accessible repositories.
+/** Mint an installation token, optionally restricted to one repository.
+ * @param {number} installationId Verified installation ID.
+ * @param {number} [repositoryId] Repository permitted for a task.
+ * @returns {Promise<{token: string, expires_at: string}>} Ephemeral credentials.
  */
-export async function listInstallationRepositories(installationId) {
+export async function createInstallationToken(installationId, repositoryId) {
   if (!env.githubAppPrivateKey || env.githubAppPrivateKey.startsWith('replace-with')) {
     throw new AppError(503, 'GitHub App private key is not configured');
   }
@@ -51,39 +52,46 @@ export async function listInstallationRepositories(installationId) {
     throw new AppError(503, 'GitHub App private key is invalid');
   }
 
-  async function githubRequest(url, token, method = 'GET') {
-    let response;
-    try {
-      response = await fetch(url, {
-        method,
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: 'application/vnd.github+json',
-          'X-GitHub-Api-Version': '2022-11-28',
-        },
-        signal: AbortSignal.timeout(10000),
-      });
-    } catch {
-      console.error('GitHub repository request failed');
-      throw new AppError(502, 'Unable to retrieve GitHub repositories');
-    }
-    if (!response.ok) {
-      console.error('GitHub repository request failed', response.status);
-      throw new AppError(502, 'Unable to retrieve GitHub repositories');
-    }
-    try {
-      return await response.json();
-    } catch {
-      throw new AppError(502, 'Invalid response from GitHub');
-    }
-  }
-
   const credentials = await githubRequest(
     `https://api.github.com/app/installations/${installationId}/access_tokens`, appToken, 'POST',
+    repositoryId ? { repository_ids: [repositoryId], permissions: { contents: 'write', pull_requests: 'write' } } : undefined,
   );
   if (typeof credentials?.token !== 'string' || !credentials.token) {
     throw new AppError(502, 'Invalid response from GitHub');
   }
+  return credentials;
+}
+
+async function githubRequest(url, token, method = 'GET', body) {
+  let response;
+  try {
+    response = await fetch(url, {
+      method,
+      headers: {
+        Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28', 'Content-Type': 'application/json',
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+      signal: AbortSignal.timeout(10000),
+    });
+  } catch {
+    console.error('GitHub repository request failed');
+    throw new AppError(502, 'Unable to retrieve GitHub repositories');
+  }
+  if (!response.ok) {
+    console.error('GitHub repository request failed', response.status);
+    throw new AppError(502, 'Unable to retrieve GitHub repositories');
+  }
+  try {
+    return await response.json();
+  } catch {
+    throw new AppError(502, 'Invalid response from GitHub');
+  }
+}
+
+/** List every repository available to an installation. */
+export async function listInstallationRepositories(installationId) {
+  const credentials = await createInstallationToken(installationId);
 
   const repositories = [];
   for (let page = 1; ; page += 1) {

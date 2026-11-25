@@ -8,6 +8,7 @@ import { ConnectionPage } from '../features/connection/ui/ConnectionPage.jsx';
 import { WorkspaceLayout } from '../shared/ui/WorkspaceLayout.jsx';
 import { Brand } from '../shared/ui/Brand.jsx';
 import { ErrorNotice } from '../shared/ui/ErrorNotice.jsx';
+import { TaskPage } from '../features/task/ui/TaskPage.jsx';
 
 export function App() {
   const restore = useBootstrapSession();
@@ -22,6 +23,8 @@ export function App() {
       <Route index element={<OverviewPage />} />
       <Route path="activity" element={<ActivityPage />} />
       <Route path="connection" element={<ConnectionPage />} />
+      <Route path="tasks" element={<TaskPage />} />
+      <Route path="tasks/:taskId" element={<TaskPage />} />
       <Route path="*" element={<div className="empty-state"><h1 className="text-3xl font-semibold">This page took a detour.</h1><Link className="text-link mt-5" to="/">Back to overview</Link></div>} />
     </Route> : <Route path="*" element={<Navigate to="/login" replace />} />}
   </Routes>;

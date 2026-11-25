@@ -30,6 +30,7 @@ export function readEnv(source) {
     if (source[key].length < 32) throw new Error(`${key} must have at least 32 characters`);
   }
   if (source.ACCESS_TOKEN_SECRET === source.REFRESH_TOKEN_SECRET) throw new Error('Token secrets must differ');
+  const privateKey = source.GITHUB_APP_PRIVATE_KEY || '';
   return Object.freeze({
     nodeEnv, port, frontendOrigin: origin.origin,
     mongoUri: source.MONGODB_URI,
@@ -38,7 +39,12 @@ export function readEnv(source) {
     githubClientSecret: source.GITHUB_CLIENT_SECRET,
     githubWebhookSecret: source.GITHUB_WEBHOOK_SECRET,
     githubAppSlug: source.GITHUB_APP_SLUG,
-    githubAppPrivateKey: Buffer.from(source.GITHUB_APP_PRIVATE_KEY,"base64").toString('utf-8'),
+    githubAppPrivateKey: privateKey.includes('-----BEGIN ')
+      ? privateKey.replaceAll('\\n', '\n') : Buffer.from(privateKey, 'base64').toString('utf-8'),
+    redisUrl: source.REDIS_URL,
+    taskNamespace: source.TASK_NAMESPACE || 'default',
+    taskAgentImage: source.TASK_AGENT_IMAGE || 'cloud-agent-agent:local',
+    taskWorkshopImage: source.TASK_WORKSHOP_IMAGE || 'cloud-agent-workshop:local',
     accessTokenSecret: source.ACCESS_TOKEN_SECRET,
     refreshTokenSecret: source.REFRESH_TOKEN_SECRET,
   });

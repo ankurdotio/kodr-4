@@ -7,4 +7,5 @@ coverage/
 *.log
 .DS_Store
 k8s/secret.local.yaml
+k8s/task-runtime-secret.local.yaml
 *.pem

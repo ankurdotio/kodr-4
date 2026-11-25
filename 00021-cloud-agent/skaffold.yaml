@@ -13,14 +13,30 @@ build:
       context: backend
       docker:
         dockerfile: Dockerfile
+    - image: cloud-agent-agent
+      context: pod/agent
+      docker:
+        dockerfile: Dockerfile
+    - image: cloud-agent-workshop
+      context: pod/workshop
+      docker:
+        dockerfile: Dockerfile
 manifests:
   rawYaml:
     - k8s/deployment.yaml
     - k8s/service.yaml
     - k8s/secret.local.yaml
     - k8s/ingress.yaml
+    - k8s/task-rbac.yaml
+    - k8s/task-network-policy.yaml
+    - k8s/task-runtime-secret.local.yaml
 deploy:
   kubeContext: docker-desktop
   kubectl: {}
   statusCheck: true
   statusCheckDeadlineSeconds: 120
+resourceSelector:
+  allow:
+    - groupKind: Deployment.apps
+      image: [".*", ".spec.template.spec.containers.*.env.*.value"]
+      labels: [".*"]

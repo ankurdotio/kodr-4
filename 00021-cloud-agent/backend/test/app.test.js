@@ -11,7 +11,7 @@ Object.assign(process.env, {
   MONGODB_URI: 'mongodb://127.0.0.1:27017/unused',
   GITHUB_CLIENT_ID: 'test-client-id',
   GITHUB_APP_ID: '12345',
-  GITHUB_APP_PRIVATE_KEY: privateKey.export({ type: 'pkcs8', format: 'pem' }).replaceAll('\n', '\\n'),
+  GITHUB_APP_PRIVATE_KEY: Buffer.from(privateKey.export({ type: 'pkcs8', format: 'pem' })).toString('base64'),
   GITHUB_CLIENT_SECRET: 'test-client-secret',
   GITHUB_WEBHOOK_SECRET: 'test-webhook-secret',
   GITHUB_APP_SLUG: 'exlantern',
@@ -31,6 +31,10 @@ const users = await import('../src/DAO/user.dao.js');
 const events = await import('../src/DAO/event.dao.js');
 const { UserModel } = await import('../src/models/user.model.js');
 const { EventModel } = await import('../src/models/event.model.js');
+const { default: Task } = await import('../src/models/task.model.js');
+const { taskJobs, buildTaskJob } = await import('../src/services/kubernetes.service.js');
+const { taskRedis } = await import('../src/config/redis.js');
+const { reconcileTask } = await import('../src/services/task.service.js');
 
 const database = `cloud_agent_test_${randomUUID().replaceAll('-', '')}`;
 const integration = { skip: !process.env.TEST_MONGODB_URI };
@@ -169,6 +173,138 @@ test('repository endpoint rejects malformed GitHub repository responses', async 
     userMock.mock.restore();
     fetchMock.mock.restore();
   }
+});
+
+test('task APIs require authentication, validate input, and conceal tasks belonging to other users', async t => {
+  await request(app).post('/api/v1/task').send({}).expect(401);
+  await request(app).get(`/api/v1/task/event/${id}`).expect(401);
+  t.mock.method(UserModel, 'findById', () => ({ lean: async () => ({ _id: id }) }));
+  const { accessToken } = issueTokens({ _id: id, githubId: '77' });
+  const invalid = await request(app).post('/api/v1/task').auth(accessToken, { type: 'bearer' })
+    .send({ userInput: ' ', repo: { id: '42', htmlUrl: 'https://other.example/repo' } }).expect(422);
+  assert.ok(invalid.body.errors.some(error => error.field === 'repo.id'));
+  await request(app).get('/api/v1/task/event/bad-id').auth(accessToken, { type: 'bearer' }).expect(422);
+  t.mock.method(Task, 'findOne', filter => {
+    assert.equal(String(filter.owner), id);
+    return { lean: async () => null };
+  });
+  await request(app).get(`/api/v1/task/event/${id}`).auth(accessToken, { type: 'bearer' }).expect(404);
+});
+
+function fakeTaskRedis(t, overrides = {}) {
+  const redis = {
+    ping: async () => 'PONG', xadd: async () => '1-0', expire: async () => 1,
+    disconnect() {}, duplicate() { return this; }, ...overrides,
+  };
+  t.mock.method(taskRedis, 'get', () => redis);
+  return redis;
+}
+
+test('task creation verifies repository ID and URL and scopes the Job token to that repository', async t => {
+  const user = { _id: id, githubId: '77', installationId: 555, installationStatus: 'active' };
+  t.mock.method(UserModel, 'findById', () => ({ lean: async () => user }));
+  fakeTaskRedis(t);
+  const { accessToken } = issueTokens(user);
+  const taskId = '607f1f77bcf86cd799439011';
+  const repo = { id: 42, name: 'project', full_name: 'owner/project', private: true, html_url: 'https://github.com/owner/project', default_branch: 'main' };
+  let scoped = false;
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    if (url.endsWith('/access_tokens')) {
+      if (options.body) {
+        assert.deepEqual(JSON.parse(options.body), { repository_ids: [42], permissions: { contents: 'write', pull_requests: 'write' } });
+        scoped = true;
+      }
+      return { ok: true, json: async () => ({ token: 'repo-only-token', expires_at: new Date(Date.now() + 3600000).toISOString() }) };
+    }
+    return { ok: true, json: async () => ({ repositories: [repo] }) };
+  });
+  const created = t.mock.method(Task, 'create', async input => {
+    assert.equal(input.owner, id);
+    assert.equal(input.repo.id, 42);
+    return { toObject: () => ({ ...input, _id: taskId, status: 'pending', createdAt: new Date() }) };
+  });
+  const scheduled = t.mock.method(taskJobs, 'create', async (task, token) => {
+    assert.equal(task._id, taskId);
+    assert.equal(token, 'repo-only-token');
+  });
+  const wrong = await request(app).post('/api/v1/task').auth(accessToken, { type: 'bearer' })
+    .send({ userInput: 'Add a page', repo: { id: 42, htmlUrl: 'https://github.com/another/project' } }).expect(403);
+  assert.equal(wrong.body.success, false);
+  assert.equal(created.mock.callCount(), 0);
+  const response = await request(app).post('/api/v1/task').auth(accessToken, { type: 'bearer' })
+    .send({ userInput: 'Add a page', owner: 'forged-owner', repo: { id: 42, htmlUrl: repo.html_url } }).expect(202);
+  assert.equal(response.body.data.task.id, taskId);
+  assert.equal('owner' in response.body.data.task, false);
+  assert.equal('token' in response.body.data.task, false);
+  assert.equal(scheduled.mock.callCount(), 1);
+  assert.equal(scoped, true);
+});
+
+test('task Jobs share an ephemeral workspace, start clone first, and isolate credentials', () => {
+  const job = buildTaskJob({
+    _id: id, userInput: 'Build a page', repo: { htmlUrl: 'https://github.com/owner/project', fullName: 'owner/project', defaultBranch: 'main' },
+  });
+  const pod = job.spec.template.spec;
+  assert.equal(pod.automountServiceAccountToken, false);
+  assert.equal(job.spec.backoffLimit, 0);
+  assert.equal(pod.initContainers[0].name, 'clone');
+  assert.equal(pod.initContainers[1].restartPolicy, 'Always');
+  assert.equal(pod.containers[0].name, 'agent');
+  assert.equal(pod.containers[0].env.find(item => item.name === 'WORKSHOP_SERVER_URL').value, 'http://127.0.0.1:4000');
+  assert.deepEqual(pod.initContainers[0].env.find(item => item.name === 'REDIS_URL').valueFrom.secretKeyRef,
+    { name: job.metadata.name, key: 'redisUrl' });
+  assert.equal(pod.initContainers[1].env.some(item => item.name.includes('TOKEN') || item.name.includes('KEY')), false);
+  assert.equal(pod.volumes.find(item => item.name === 'workshop').emptyDir.sizeLimit, '2Gi');
+  assert.equal(pod.containers[0].volumeMounts.find(item => item.name === 'task-metadata').readOnly, true);
+});
+
+test('reconciliation waits for a PR, persists its result before deletion, and logs failed pod cleanup', async t => {
+  const task = { _id: id, status: 'in-progress', createdAt: new Date(), repo: { htmlUrl: 'https://github.com/owner/project' } };
+  let completed = false;
+  let terminal = { type: 'completed', pullRequestUrl: `${task.repo.htmlUrl}/pull/7` };
+  let status = { active: 1 };
+  const redis = fakeTaskRedis(t, { xrevrange: async () => [['2-0', ['event', JSON.stringify(terminal)]]] });
+  t.mock.method(taskJobs, 'read', async () => ({ status }));
+  const deleted = t.mock.method(taskJobs, 'delete', async () => assert.equal(completed, true));
+  const updates = t.mock.method(Task, 'findByIdAndUpdate', (taskId, update) => {
+    if (['completed', 'failed'].includes(update.$set.status)) completed = true;
+    return { lean: async () => ({ ...task, ...update.$set }) };
+  });
+  await reconcileTask(task);
+  assert.equal(deleted.mock.callCount(), 0);
+  status = { conditions: [{ type: 'Complete', status: 'True' }] };
+  await reconcileTask(task);
+  assert.equal(deleted.mock.callCount(), 1);
+  assert.equal(updates.mock.calls[0].arguments[1].$set.pullRequestUrl, terminal.pullRequestUrl);
+  terminal = { type: 'started' };
+  status = { conditions: [{ type: 'Failed', status: 'True' }] };
+  const failureLog = t.mock.method(redis, 'xadd', async (...args) => {
+    assert.equal(JSON.parse(args.at(-1)).type, 'failed');
+  });
+  await reconcileTask(task);
+  assert.equal(failureLog.mock.callCount(), 1);
+  assert.equal(deleted.mock.callCount(), 2);
+});
+
+test('SSE resumes from Last-Event-ID and drains remaining events before the terminal response', async t => {
+  t.mock.method(UserModel, 'findById', () => ({ lean: async () => ({ _id: id }) }));
+  t.mock.method(Task, 'findOne', () => ({
+    lean: async () => ({ _id: id, status: 'completed', repo: {}, pullRequestUrl: 'https://github.com/owner/project/pull/1' }),
+  }));
+  fakeTaskRedis(t, {
+    xread: async (...args) => {
+      assert.equal(args.at(-1), '1-0');
+      return [[`task:${id}`, [['2-0', ['event', '{"agent":"main","content":"working"}']]]]];
+    },
+    xrange: async () => [['3-0', ['event', '{"type":"completed","pullRequestUrl":"https://github.com/owner/project/pull/1"}']]],
+  });
+  const { accessToken } = issueTokens({ _id: id, githubId: '77' });
+  const response = await request(app).get(`/api/v1/task/event/${id}`)
+    .auth(accessToken, { type: 'bearer' }).set('Last-Event-ID', '1-0').expect(200);
+  assert.match(response.headers['content-type'], /text\/event-stream/);
+  assert.match(response.text, /id: 2-0/);
+  assert.ok(response.text.indexOf('id: 3-0') < response.text.indexOf('event: done'));
+  assert.equal(response.headers['x-accel-buffering'], 'no');
 });
 
 test('cookie mutations reject foreign origins and missing refresh tokens', async () => {

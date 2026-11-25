@@ -20,7 +20,7 @@ export function OverviewPage() {
     <ErrorNotice message={connection.error} />
     <section className="hero-panel">
       <div className="hero-copy"><div className="hero-kicker"><Github size={18} /><span>GITHUB × CLOUD AGENT</span></div><h2>{installed ? 'Your code. A little closer.' : 'Code starts with a connection.'}</h2><p>{installed ? 'Your GitHub App is connected. Repository events have a home, and your workspace is ready for what comes next.' : 'Bring your GitHub repositories into the loop. Connect the app to keep your workspace in sync with your code.'}</p>
-        {installed ? <Link to="/connection" className="button button-primary">View connection<ArrowUpRight size={16} /></Link>
+        {installed ? <Link to="/tasks" className="button button-primary">Start a cloud task<ArrowUpRight size={16} /></Link>
           : <button className="button button-primary" disabled={connection.status === 'loading'} onClick={connection.connect}><Github size={16} />{connection.status === 'loading' ? 'Opening GitHub…' : 'Connect GitHub App'}<ArrowUpRight size={16} /></button>}
         <span className="hero-security"><ShieldCheck size={13} />You choose the repositories. Always.</span>
       </div>

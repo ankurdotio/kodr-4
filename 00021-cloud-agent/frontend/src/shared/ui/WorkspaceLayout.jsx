@@ -1,4 +1,4 @@
-import { Activity, ArrowUpRight, Github, LayoutDashboard, LogOut, Menu, X } from 'lucide-react';
+import { Activity, ArrowUpRight, Github, LayoutDashboard, LogOut, Menu, Play, X } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router';
 import { useState } from 'react';
 import { useAuth } from '../../features/auth/hooks/useAuth.js';
@@ -7,6 +7,7 @@ import { ErrorNotice } from './ErrorNotice.jsx';
 
 const navigation = [
   { to: '/', label: 'Overview', icon: LayoutDashboard },
+  { to: '/tasks', label: 'Cloud tasks', icon: Play },
   { to: '/activity', label: 'Activity', icon: Activity },
   { to: '/connection', label: 'GitHub connection', icon: Github },
 ];
