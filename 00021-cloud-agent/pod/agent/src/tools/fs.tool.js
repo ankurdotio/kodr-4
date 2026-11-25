@@ -206,9 +206,9 @@ export const listFilesTool = tool(listWorkshopFiles, {
     name: "list_files",
     description: "List files and folders in the shared workshop folder. Recursive by default; node_modules and .git are shown but not expanded unless includeIgnored is true.",
     schema: z.object({
-        path: z.string().min(1).optional().describe("Folder relative to the workshop, default '.'"),
-        recursive: z.boolean().optional().describe("List subfolders recursively, default true"),
-        includeIgnored: z.boolean().optional().describe("Also expand node_modules and .git, default false"),
+        path: z.string().min(1).nullable().describe("Folder relative to the workshop, default '.'"),
+        recursive: z.boolean().nullable().describe("List subfolders recursively, default true"),
+        includeIgnored: z.boolean().nullable().describe("Also expand node_modules and .git, default false"),
     }),
 })
 

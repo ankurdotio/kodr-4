@@ -1,11 +1,13 @@
 import * as z from "zod"
 import { freshSystemPromptForPlanner, replanSystemPrompt } from "../prompt/planner.prompt.js"
 import { SystemMessage, HumanMessage, AIMessage, createAgent, providerStrategy } from "langchain"
-import model from "../model.js"
+import model, { mistralMedium, nvidiaUltra } from "../model.js"
 import { fsTools, listFilesTool, readFilesTool } from "../tools/fs.tool.js"
 import { cliTools } from "../tools/cli.tool.js"
 import { mainAgentSystemPrompt } from "../prompt/main.prompt.js";
 import { testSystemPrompt } from "../prompt/test.prompt.js"
+import { streamAgentResponse } from "./stream.js"
+
 
 
 /**
@@ -48,81 +50,32 @@ export const PlannerNode = async (state, config) => {
     })
 
     const agent = createAgent({
-        model,
+        model: nvidiaUltra,
         tools: [ listFilesTool, readFilesTool ],
         responseFormat: providerStrategy(outputFormat)
     })
 
 
-    if (!plan) {
-
-        const messages = [
+    const messages = !plan
+        ? [
             new SystemMessage(freshSystemPromptForPlanner),
-            new HumanMessage(userInput)
+            new HumanMessage(userInput),
+        ]
+        : [
+            ...plannerHistory,
+            new HumanMessage(JSON.stringify({
+                previousPlan: plan,
+                testResults,
+                blockers,
+            }, null, 2)),
         ]
 
-        let finalResponse = null
-
-        const stream = await agent.stream({
-            messages
-        },
-            {
-                streamMode: [ "updates", "values" ]
-            }
-        )
-
-
-        for await (const [ mode, chunk ] of stream) {
-            if (mode === "updates") finalResponse = chunk.model_request
-
-            if (mode === "updates") config.configurable.emitEvent({
-                agent: "planner",
-                content: {
-                    tasks: chunk.model_request?.structuredResponse?.tasks || [],
-                    plan: chunk.model_request?.structuredResponse?.plan || ""
-                }
-            })
-        }
-
-
-
-        plannerHistory.push(...finalResponse?.messages)
-
-        return {
-            plannerHistory: plannerHistory,
-            plan: finalResponse?.structuredResponse?.plan || "",
-            tasks: finalResponse?.structuredResponse?.tasks || [],
-            replannedCount,
-            testFailedCount: 0
-        }
-    }
-
-    const messages = [
-        ...plannerHistory,
-        new HumanMessage(JSON.stringify({
-            previousPlan: plan,
-            testResults,
-            blockers,
-        }, null, 2))
-    ]
-
-    const stream = await agent.stream({
-        messages
-    }, {
-        streamMode: [ "updates", "values" ]
-    })
-
-
-    for await (const [ mode, chunk ] of stream) {
-        if (mode === "values") finalResponse = chunk
-
-        if (mode === "updates") console.log(chunk)
-    }
+    const finalResponse = await streamAgentResponse(agent, messages, "planner", config.configurable.emitEvent)
 
     return {
-        plannerHistory: [ ...finalResponse?.messages ],
-        plan: finalResponse?.structuredResponse?.plan || "",
-        tasks: finalResponse?.structuredResponse?.tasks || [],
+        plannerHistory: finalResponse.messages,
+        plan: finalResponse.structuredResponse.plan,
+        tasks: finalResponse.structuredResponse.tasks,
         replannedCount,
         testFailedCount: 0
     }
@@ -141,7 +94,7 @@ export const MainNode = async (state, config) => {
     })
 
     const agent = createAgent({
-        model,
+        model: nvidiaUltra,
         tools: [ ...fsTools, ...cliTools ],
         responseFormat: providerStrategy(mainOutputFormat),
     })
@@ -155,29 +108,12 @@ export const MainNode = async (state, config) => {
         testFailedCount: state.testFailedCount || 0,
     }
 
-    let response = null
+    const response = await streamAgentResponse(agent, [
+        new SystemMessage(mainAgentSystemPrompt),
+        new HumanMessage(JSON.stringify(context, null, 2)),
+    ], "main", config.configurable.emitEvent)
 
-    const stream = await agent.stream({
-        messages: [
-            new SystemMessage(mainAgentSystemPrompt),
-            new HumanMessage(JSON.stringify(context, null, 2)),
-        ],
-    }, {
-        streamMode: [ "updates", "values" ]
-    })
-
-    for await (const [ mode, chunk ] of stream) {
-        if (mode === "values") response = chunk
-
-        if (mode === "updates") config.configurable.emitEvent({
-            agent: "main",
-            content: {
-                message: chunk
-            }
-        })
-    }
-
-    const report = response?.structuredResponse || response
+    const report = response.structuredResponse
 
     return {
         mainHistory: [
@@ -219,27 +155,10 @@ export const TestNode = async (state, config) => {
         blockers
     }))
 
-    let response = null
-
-    const stream = await agent.stream({
-        messages: [
-            ...testAgentMessages,
-            context
-        ]
-    }, {
-        streamMode: [ "updates", "values" ]
-    })
-
-    for await (const [ mode, chunk ] of stream) {
-        if (mode === "values") response = chunk
-
-        if (mode === "updates") config.configurable.emitEvent({
-            agent: "test",
-            content: {
-                message: chunk
-            }
-        })
-    }
+    const response = await streamAgentResponse(agent, [
+        ...testAgentMessages,
+        context,
+    ], "test", config.configurable.emitEvent)
 
 
     return {

@@ -11,7 +11,7 @@ const graphState = z.object({
     userInput: z.string().describe("User input for the current session"),
     mainHistory: z.array(z.any()).describe("History of main agent interactions"),
     testHistory: z.array(z.any()).describe("History of test agent interactions"),
-    planHistory: z.array(z.any()).describe("History of plan interactions"),
+    plannerHistory: z.array(z.any()).describe("History of plan interactions"),
 
     // ––––––––––––––––––––––– tasks and planning –––––––––––––––––
     tasks: z.array(z.object({

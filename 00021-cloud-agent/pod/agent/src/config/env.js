@@ -7,5 +7,7 @@ export default Object.freeze({
     WORKSHOP_DIR: process.env.WORKSHOP_DIR || "/workshop",
     WORKSHOP_SERVER_URL: process.env.WORKSHOP_SERVER_URL || "http://workshop:4000",
     REDIS_URL: process.env.REDIS_URL || "redis://localhost:6379",
-    TASK_ID: process.env.TASK_ID || "default-task-id"
+    TASK_ID: process.env.TASK_ID || "default-task-id",
+    MISTRAL_API_KEY: process.env.MISTRAL_API_KEY || "",
+    NVIDIA_API_KEY: process.env.NVIDIA_API_KEY || ""
 })

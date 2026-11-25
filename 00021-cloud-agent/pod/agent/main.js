@@ -7,9 +7,7 @@ const response = await graph.invoke({
 }, {
     recursionLimit: 100,
     configurable: {
-        emitEvent: (data) => {
-            redis.xadd(`task:${env.TASK_ID}`, "*", "event", JSON.stringify(data))
-        }
+        emitEvent: (data) => redis.xadd(`task:${env.TASK_ID}`, "*", "event", JSON.stringify(data))
     }
 })
 

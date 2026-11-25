@@ -1,5 +1,6 @@
 import { ChatOpenAI } from "@langchain/openai"
 import env from "./config/env.js"
+import { ChatMistralAI } from "@langchain/mistralai"
 
 
 const model = new ChatOpenAI({
@@ -10,5 +11,21 @@ const model = new ChatOpenAI({
         baseURL: "https://api.cohere.ai/compatibility/v1"
     }
 })
+
+export const mistralMedium = new ChatMistralAI({
+    model: "mistral-small-latest",
+    apiKey: env.MISTRAL_API_KEY,
+})
+
+
+export const nvidiaUltra = new ChatOpenAI({
+    model: "mistralai/mistral-large-4-1t-a52b",
+    apiKey: env.NVIDIA_API_KEY,
+    configuration: {
+        baseURL: "https://integrate.api.nvidia.com/v1"
+    }
+})
+
+
 
 export default model

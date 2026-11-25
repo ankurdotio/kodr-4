@@ -254,6 +254,13 @@ docker compose -f pod/compose.yaml up --build -d workshop
 docker compose -f pod/compose.yaml up --build
 ```
 
+Agent events are JSON stored in the `event` field of Redis stream `task:<TASK_ID>`.
+Each event contains `agent` (`planner`, `main`, or `test`) and `content`.
+Model text, tool calls, and reasoning (when supplied by the provider) come from
+the latest model message; final structured fields such as `plan` and `tasks`
+come from the agent state. Tool-result updates do not emit empty placeholder
+events. Each Redis write is awaited, and write failures fail the agent run.
+
 Port 4000 is internal to the Compose network, not published on the host. From
 a client on that network:
 
