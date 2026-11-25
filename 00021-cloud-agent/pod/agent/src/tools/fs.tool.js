@@ -230,15 +230,15 @@ export const createFilesTool = tool(createWorkshopFiles, {
 
 export const updateFilesTool = tool(updateWorkshopFiles, {
     name: "update_files",
-    description: "Update one or more existing workshop files in a single call. For each file provide either content to replace the whole file, or edits: exact oldText/newText replacements applied in order, each matching exactly once. Set the unused field to null. Nothing is written unless every change is valid.",
+    description: "Update one or more existing workshop files in a single call. For each file provide either content to replace the whole file, or edits: exact oldText/newText replacements applied in order, each matching exactly once. Omit the unused field or set it to null. Nothing is written unless every change is valid.",
     schema: z.object({
         files: fileList(z.object({
             path: filePath,
-            content: z.string().nullable().describe("Complete replacement content, or null when using edits"),
+            content: z.string().nullable().default(null).describe("Complete replacement content; omit or null when using edits"),
             edits: z.array(z.object({
                 oldText: z.string().min(1).describe("Exact text that occurs once in the file"),
                 newText: z.string().describe("Replacement for oldText"),
-            })).min(1).nullable().describe("Exact replacements, or null when using content"),
+            })).min(1).nullable().default(null).describe("Exact replacements; omit or null when using content"),
         })),
     }),
 })

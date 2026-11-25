@@ -150,6 +150,8 @@ test("validates nullable update modes before writing and allows empty replacemen
     }
     await tools.updateFilesTool.invoke({ files: [{ path: "nullable.txt", content: "", edits: null }] })
     assert.equal(await fs.readFile(path.join(dir, "nullable.txt"), "utf8"), "")
+    await tools.updateFilesTool.invoke({ files: [{ path: "nullable.txt", content: "omitted edits" }] })
+    assert.equal(await fs.readFile(path.join(dir, "nullable.txt"), "utf8"), "omitted edits")
 })
 
 test("uses command defaults when nullable options are null", async () => {

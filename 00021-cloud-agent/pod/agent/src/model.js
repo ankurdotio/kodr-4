@@ -6,6 +6,8 @@ import { ChatMistralAI } from "@langchain/mistralai"
 const model = new ChatOpenAI({
     // @langchain/cohere only calls Cohere's /v1/chat; newer models (e.g. command-a-plus-05-2026) are v2-only
     model: "command-a-plus-05-2026",
+    // Constrains tool calls to the bound tools and their schemas; Cohere returns 422 for invented tools otherwise.
+    supportsStrictToolCalling: true,
     apiKey: env.COHERE_API_KEY,
     configuration: {
         baseURL: "https://api.cohere.ai/compatibility/v1"
