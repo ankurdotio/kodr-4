@@ -36,6 +36,12 @@ spec:
               value: http://localhost:5173
             - name: GITHUB_APP_SLUG
               value: exlantern
+            - name: GITHUB_APP_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: cloud-agent-github-key
+                  key: GITHUB_APP_PRIVATE_KEY
+                  optional: true
           envFrom:
             - secretRef:
                 name: cloud-agent-backend

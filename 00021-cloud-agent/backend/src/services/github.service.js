@@ -1,3 +1,4 @@
+import jwt from 'jsonwebtoken';
 import { AppError } from '../utils/AppError.js';
 import { env } from '../config/env.js';
 
@@ -29,4 +30,76 @@ export async function findGithubInstallation(accessToken, installationId) {
     if (body.installations.length < 100) return null;
   }
   throw new AppError(502, 'Too many GitHub installations to verify');
+}
+
+/** List repositories available to a verified GitHub App installation.
+ * @param {number} installationId Installation ID.
+ * @returns {Promise<object[]>} Accessible repositories.
+ */
+export async function listInstallationRepositories(installationId) {
+  if (!env.githubAppPrivateKey || env.githubAppPrivateKey.startsWith('replace-with')) {
+    throw new AppError(503, 'GitHub App private key is not configured');
+  }
+
+  let appToken;
+  try {
+    const now = Math.floor(Date.now() / 1000);
+    appToken = jwt.sign({ iat: now - 60, exp: now + 540, iss: env.githubAppId },
+      env.githubAppPrivateKey, { algorithm: 'RS256' });
+  } catch {
+    console.error('Unable to sign GitHub App authentication token');
+    throw new AppError(503, 'GitHub App private key is invalid');
+  }
+
+  async function githubRequest(url, token, method = 'GET') {
+    let response;
+    try {
+      response = await fetch(url, {
+        method,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+        signal: AbortSignal.timeout(10000),
+      });
+    } catch {
+      console.error('GitHub repository request failed');
+      throw new AppError(502, 'Unable to retrieve GitHub repositories');
+    }
+    if (!response.ok) {
+      console.error('GitHub repository request failed', response.status);
+      throw new AppError(502, 'Unable to retrieve GitHub repositories');
+    }
+    try {
+      return await response.json();
+    } catch {
+      throw new AppError(502, 'Invalid response from GitHub');
+    }
+  }
+
+  const credentials = await githubRequest(
+    `https://api.github.com/app/installations/${installationId}/access_tokens`, appToken, 'POST',
+  );
+  if (typeof credentials?.token !== 'string' || !credentials.token) {
+    throw new AppError(502, 'Invalid response from GitHub');
+  }
+
+  const repositories = [];
+  for (let page = 1; ; page += 1) {
+    const body = await githubRequest(
+      `https://api.github.com/installation/repositories?per_page=100&page=${page}`, credentials.token,
+    );
+    if (!Array.isArray(body?.repositories) || body.repositories.some(repo =>
+      !Number.isSafeInteger(repo?.id) || typeof repo.name !== 'string' ||
+      typeof repo.full_name !== 'string' || typeof repo.private !== 'boolean' ||
+      typeof repo.html_url !== 'string' || typeof repo.default_branch !== 'string')) {
+      throw new AppError(502, 'Invalid response from GitHub');
+    }
+    repositories.push(...body.repositories.map(repo => ({
+      id: repo.id, name: repo.name, fullName: repo.full_name, private: repo.private,
+      htmlUrl: repo.html_url, defaultBranch: repo.default_branch,
+    })));
+    if (body.repositories.length < 100) return repositories;
+  }
 }

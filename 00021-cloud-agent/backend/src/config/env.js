@@ -38,6 +38,7 @@ export function readEnv(source) {
     githubClientSecret: source.GITHUB_CLIENT_SECRET,
     githubWebhookSecret: source.GITHUB_WEBHOOK_SECRET,
     githubAppSlug: source.GITHUB_APP_SLUG,
+    githubAppPrivateKey: Buffer.from(source.GITHUB_APP_PRIVATE_KEY,"base64").toString('utf-8'),
     accessTokenSecret: source.ACCESS_TOKEN_SECRET,
     refreshTokenSecret: source.REFRESH_TOKEN_SECRET,
   });

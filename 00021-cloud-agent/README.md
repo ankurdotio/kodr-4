@@ -32,8 +32,12 @@ organization approval must be approved before completing connection.
 Subscribe to the webhook events you want to see (for example push and pull
 request), grant the corresponding minimum repository permissions, and enable
 the app's webhook. Installation lifecycle events update connection status.
-No private key or installation API token is needed: the app verifies an
-installation using the signed-in GitHub user's `/user/installations` API.
+The app verifies an installation using the signed-in GitHub user's
+`/user/installations` API. To list its repositories, generate a GitHub App
+private key and configure `GITHUB_APP_PRIVATE_KEY`. For a locally run backend,
+use a PEM string with literal `\n` sequences in `.env`. For Kubernetes, use
+the separate Secret described below. The repository endpoint returns 503 if the
+key is missing or invalid; other features remain available.
 This scaffold does not clone code, start agents, process payments, or replay events.
 
 ## Install and configure
@@ -64,6 +68,10 @@ encrypted at rest; use a proper secret manager for real deployments.
 ```sh
 cp k8s/secret.yaml k8s/secret.local.yaml
 # Edit k8s/secret.local.yaml locally.
+# Substitute the path to your GitHub App private key without committing it.
+kubectl --context docker-desktop create secret generic cloud-agent-github-key \
+  --from-file=GITHUB_APP_PRIVATE_KEY=backend/path-to-private-key.pem \
+  --dry-run=client -o yaml | kubectl --context docker-desktop apply -f -
 docker build -t cloud-agent-backend:local backend
 kubectl --context docker-desktop apply -f k8s/secret.local.yaml
 kubectl --context docker-desktop apply -f k8s/deployment.yaml -f k8s/service.yaml -f k8s/ingress.yaml
@@ -77,6 +85,7 @@ can retrieve locally built images through Docker Desktop's image mirror.
 without image sharing, load the image into each node's image store first.
 After rebuilding the same image tag, run
 `kubectl --context docker-desktop rollout restart deployment/cloud-agent-backend`.
+Restart the deployment after updating the GitHub App private key Secret too.
 
 The manifests intentionally use `NODE_ENV=development` for your HTTP localhost
 setup, so cookies are not marked Secure. This is **not** a production deployment:
@@ -230,6 +239,7 @@ endpoints below take an empty body unless specified.
 | GET | `/api/v1/auth/me` | Bearer token | Profile envelope shown above |
 | POST | `/api/v1/auth/github/connect` | Bearer token | `{"success":true,"message":"GitHub installation URL created","data":{"url":"https://github.com/apps/exlantern/installations/new?state=..."}}}` |
 | GET | `/api/v1/activity` | Bearer token | `{"success":true,"message":"Activity retrieved","data":{"events":[]}}` |
+| GET | `/api/v1/task/github/repos` | Bearer token; active installation | `{"success":true,"message":"GitHub repositories retrieved","data":{"repositories":[{"id":123,"name":"project","fullName":"owner/project","private":true,"htmlUrl":"https://github.com/owner/project","defaultBranch":"main"}]}}` |
 | POST | `/api/v1/webhook/github/event` | Original GitHub JSON + signature/delivery/event headers | `{"success":true,"message":"Webhook received","data":{"deliveryId":"..."}}` |
 | GET | `/api/v1/health/live` | None | `{"success":true,"message":"Server is running","data":{"status":"ok"}}` |
 | GET | `/api/v1/health/ready` | None | `{"success":true,"message":"Server is ready","data":{"status":"ready"}}` |
@@ -237,6 +247,15 @@ endpoints below take an empty body unless specified.
 Activity is installation-scoped, contains only delivery summaries (not code or raw
 payloads), is capped at the latest 50 events, and expires after 30 days via MongoDB
 TTL. Duplicate delivery IDs are idempotent.
+
+The repository endpoint creates a short-lived installation token and returns all
+pages of repositories available to the user's connected installation (including
+private repositories). It returns 409 when the installation is not active and
+502 when GitHub cannot provide the list. An installation token reflects the
+app's installation permissions, not the signed-in user's current repository
+permissions: users whose access was revoked may retain access until they next
+sign in or a relevant installation lifecycle webhook is processed. Do not use
+this endpoint where current per-user GitHub authorization is required.
 
 ## Agent and workshop containers
 

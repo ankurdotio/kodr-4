@@ -7,3 +7,4 @@ coverage/
 *.log
 .DS_Store
 k8s/secret.local.yaml
+*.pem

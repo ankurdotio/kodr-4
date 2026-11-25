@@ -1,15 +1,17 @@
 import { after, before, test, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { createHmac, randomUUID } from 'node:crypto';
+import { createHmac, generateKeyPairSync, randomUUID } from 'node:crypto';
 import request from 'supertest';
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 
+const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
 Object.assign(process.env, {
   NODE_ENV: 'test',
   MONGODB_URI: 'mongodb://127.0.0.1:27017/unused',
   GITHUB_CLIENT_ID: 'test-client-id',
   GITHUB_APP_ID: '12345',
+  GITHUB_APP_PRIVATE_KEY: privateKey.export({ type: 'pkcs8', format: 'pem' }).replaceAll('\n', '\\n'),
   GITHUB_CLIENT_SECRET: 'test-client-secret',
   GITHUB_WEBHOOK_SECRET: 'test-webhook-secret',
   GITHUB_APP_SLUG: 'exlantern',
@@ -83,7 +85,7 @@ test('signature validation uses original bytes and rejects tampering or malforme
 test('public health, missing routes, malformed JSON, and missing authentication follow envelopes', async () => {
   const health = await request(app).get('/api/v1/health/live').expect(200);
   assert.deepEqual(health.body, { success: true, message: 'Server is running', data: { status: 'ok' } });
-  for (const path of ['/api/v1/auth/me', '/api/v1/activity']) {
+  for (const path of ['/api/v1/auth/me', '/api/v1/activity', '/api/v1/task/github/repos']) {
     const response = await request(app).get(path).expect(401);
     assert.equal(response.body.success, false);
     assert.deepEqual(response.body.errors, []);
@@ -93,6 +95,80 @@ test('public health, missing routes, malformed JSON, and missing authentication 
   assert.equal(missing.body.message, 'Route not found');
   const malformed = await request(app).post('/api/v1/auth/refresh').set('Content-Type', 'application/json').send('{').expect(400);
   assert.equal(malformed.body.message, 'Invalid JSON body');
+});
+
+test('repository endpoint uses the connected installation token and returns every page', async () => {
+  const user = { _id: id, githubId: '77', installationId: 555, installationStatus: 'active' };
+  const userMock = mock.method(UserModel, 'findById', () => ({ lean: async () => user }));
+  const repo = index => ({
+    id: index, name: `repo-${index}`, full_name: `owner/repo-${index}`,
+    private: true, html_url: `https://github.com/owner/repo-${index}`, default_branch: 'main',
+    extra: 'not returned',
+  });
+  const fetchMock = mock.method(globalThis, 'fetch', async (url, options) => {
+    if (url.endsWith('/access_tokens')) {
+      assert.equal(url, 'https://api.github.com/app/installations/555/access_tokens');
+      assert.equal(options.method, 'POST');
+      const claims = jwt.verify(options.headers.Authorization.slice(7), publicKey, { algorithms: ['RS256'] });
+      assert.equal(claims.iss, '12345');
+      return { ok: true, json: async () => ({ token: 'installation-token' }) };
+    }
+    assert.equal(options.headers.Authorization, 'Bearer installation-token');
+    const page = new URL(url).searchParams.get('page');
+    return { ok: true, json: async () => ({
+      repositories: page === '1' ? Array.from({ length: 100 }, (_, i) => repo(i + 1)) : [repo(101)],
+    }) };
+  });
+  try {
+    const { accessToken } = issueTokens(user);
+    const response = await request(app).get('/api/v1/task/github/repos').auth(accessToken, { type: 'bearer' }).expect(200);
+    assert.equal(response.headers['cache-control'], 'no-store');
+    assert.equal(response.body.data.repositories.length, 101);
+    assert.deepEqual(response.body.data.repositories[100], {
+      id: 101, name: 'repo-101', fullName: 'owner/repo-101', private: true,
+      htmlUrl: 'https://github.com/owner/repo-101', defaultBranch: 'main',
+    });
+    assert.equal(fetchMock.mock.callCount(), 3);
+  } finally {
+    userMock.mock.restore();
+    fetchMock.mock.restore();
+  }
+});
+
+test('repository endpoint rejects inactive installations and GitHub failures', async () => {
+  const user = { _id: id, githubId: '77', installationId: 555, installationStatus: 'suspended' };
+  const userMock = mock.method(UserModel, 'findById', () => ({ lean: async () => user }));
+  const fetchMock = mock.method(globalThis, 'fetch', async () => ({ ok: false, status: 403 }));
+  const log = mock.method(console, 'error', () => {});
+  try {
+    const { accessToken } = issueTokens(user);
+    await request(app).get('/api/v1/task/github/repos').auth(accessToken, { type: 'bearer' }).expect(409);
+    assert.equal(fetchMock.mock.callCount(), 0);
+    user.installationStatus = 'active';
+    const response = await request(app).get('/api/v1/task/github/repos').auth(accessToken, { type: 'bearer' }).expect(502);
+    assert.equal(response.body.message, 'Unable to retrieve GitHub repositories');
+  } finally {
+    userMock.mock.restore();
+    fetchMock.mock.restore();
+    log.mock.restore();
+  }
+});
+
+test('repository endpoint rejects malformed GitHub repository responses', async () => {
+  const user = { _id: id, githubId: '77', installationId: 555, installationStatus: 'active' };
+  const userMock = mock.method(UserModel, 'findById', () => ({ lean: async () => user }));
+  const fetchMock = mock.method(globalThis, 'fetch', async url => ({
+    ok: true, json: async () => url.endsWith('/access_tokens')
+      ? { token: 'installation-token' } : { repositories: [null] },
+  }));
+  try {
+    const { accessToken } = issueTokens(user);
+    const response = await request(app).get('/api/v1/task/github/repos').auth(accessToken, { type: 'bearer' }).expect(502);
+    assert.equal(response.body.message, 'Invalid response from GitHub');
+  } finally {
+    userMock.mock.restore();
+    fetchMock.mock.restore();
+  }
 });
 
 test('cookie mutations reject foreign origins and missing refresh tokens', async () => {
