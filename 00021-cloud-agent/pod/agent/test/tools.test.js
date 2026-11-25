@@ -4,6 +4,7 @@ import fs from "node:fs/promises"
 import http from "node:http"
 import os from "node:os"
 import path from "node:path"
+import { convertToOpenAITool } from "@langchain/core/utils/function_calling"
 
 let dir
 let outside
@@ -48,8 +49,8 @@ test("creates, reads, and updates multiple files in one call", async () => {
     assert.deepEqual(created.created.map((file) => file.path), ["src/a.js", "src/b.js"])
 
     await tools.updateFilesTool.invoke({ files: [
-        { path: "src/a.js", edits: [{ oldText: "a = 1", newText: "a = 2" }, { oldText: "b = 1", newText: "b = 3" }] },
-        { path: "src/b.js", content: "replaced" },
+        { path: "src/a.js", content: null, edits: [{ oldText: "a = 1", newText: "a = 2" }, { oldText: "b = 1", newText: "b = 3" }] },
+        { path: "src/b.js", content: "replaced", edits: null },
     ] })
 
     const read = await tools.readFilesTool.invoke({ paths: ["src/a.js", "src/b.js", "missing.js"] })
@@ -89,7 +90,7 @@ test("rejects paths outside the workshop", async () => {
 
 test("lists workshop files without expanding ignored folders or symlinks", async () => {
     await fs.mkdir(path.join(dir, "node_modules/pkg"), { recursive: true })
-    const all = await tools.listFilesTool.invoke({})
+    const all = await tools.listFilesTool.invoke({ path: null, recursive: null, includeIgnored: null })
     assert.deepEqual(all.entries, [
         { path: "link", type: "symlink" },
         { path: "node_modules/", type: "directory", skipped: true },
@@ -100,6 +101,10 @@ test("lists workshop files without expanding ignored folders or symlinks", async
     const src = await tools.listWorkshopFiles({ path: "src", recursive: false })
     assert.deepEqual(src.entries.map((entry) => entry.path), ["src/a.js", "src/b.js"])
     assert.equal(all.truncated, false)
+    const shallow = await tools.listFilesTool.invoke({ path: ".", recursive: false, includeIgnored: false })
+    assert.ok(!shallow.entries.some((entry) => entry.path === "src/a.js"))
+    const expanded = await tools.listFilesTool.invoke({ path: ".", recursive: true, includeIgnored: true })
+    assert.ok(expanded.entries.some((entry) => entry.path === "node_modules/pkg/"))
 })
 
 test("sends commands to the workshop server", async () => {
@@ -107,4 +112,49 @@ test("sends commands to the workshop server", async () => {
     assert.deepEqual(requestBody, { command: "npm test", cwd: "src", timeoutMs: 5_000 })
     assert.equal(result.output, "ok\n")
     await assert.rejects(cli.runWorkshopCommand({ command: "bad" }), /rejected/)
+})
+
+test("requires every property in the generated tool schemas, including nested objects", () => {
+    function checkSchema(schema) {
+        if (schema.type === "object") {
+            assert.deepEqual([ ...(schema.required || []) ].sort(), Object.keys(schema.properties).sort())
+            assert.equal(schema.additionalProperties, false)
+        }
+        for (const value of Object.values(schema)) {
+            if (Array.isArray(value)) {
+                for (const item of value) {
+                    if (item && typeof item === "object") checkSchema(item)
+                }
+            } else if (value && typeof value === "object") {
+                checkSchema(value)
+            }
+        }
+    }
+
+    for (const tool of [ ...tools.fsTools, ...cli.cliTools ]) {
+        checkSchema(convertToOpenAITool(tool).function.parameters)
+    }
+})
+
+test("validates nullable update modes before writing and allows empty replacement content", async () => {
+    await tools.createWorkshopFiles({ files: [{ path: "nullable.txt", content: "original" }] })
+    for (const invalid of [
+        { content: null, edits: null },
+        { content: "changed", edits: [{ oldText: "original", newText: "edited" }] },
+    ]) {
+        await assert.rejects(tools.updateFilesTool.invoke({ files: [
+            { path: "nullable.txt", content: "must not be written", edits: null },
+            { path: "nullable.txt", ...invalid },
+        ] }), /provide either content or a non-empty edits list/)
+        assert.equal(await fs.readFile(path.join(dir, "nullable.txt"), "utf8"), "original")
+    }
+    await tools.updateFilesTool.invoke({ files: [{ path: "nullable.txt", content: "", edits: null }] })
+    assert.equal(await fs.readFile(path.join(dir, "nullable.txt"), "utf8"), "")
+})
+
+test("uses command defaults when nullable options are null", async () => {
+    await cli.runCommandTool.invoke({ command: "pwd", cwd: null, timeoutMs: null })
+    assert.deepEqual(requestBody, { command: "pwd", cwd: ".", timeoutMs: 120_000 })
+    await cli.runWorkshopCommand({ command: "pwd" })
+    assert.deepEqual(requestBody, { command: "pwd", cwd: ".", timeoutMs: 120_000 })
 })

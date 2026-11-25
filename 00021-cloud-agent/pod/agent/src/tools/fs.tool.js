@@ -135,7 +135,7 @@ function applyEdits(relative, current, edits) {
 
 /**
  * Update several existing files. Every change is computed and validated before any file is written.
- * @param {{ files: Array<{ path: string, content?: string, edits?: Array<{ oldText: string, newText: string }> }> }} input
+ * @param {{ files: Array<{ path: string, content?: string | null, edits?: Array<{ oldText: string, newText: string }> | null }> }} input
  * @returns {Promise<{ updated: Array<{ path: string, bytes: number }> }>}
  * @throws {Error} When any path or edit is invalid; nothing is written then.
  */
@@ -144,7 +144,9 @@ export async function updateWorkshopFiles({ files }) {
         const resolved = await resolveWorkshopPath(requested).catch((error) => {
             throw new Error(`${requested}: ${error.message}`)
         })
-        if ((content === undefined) === (edits === undefined || edits.length === 0)) {
+        const hasContent = content !== undefined && content !== null
+        const hasEdits = edits !== undefined && edits !== null && edits.length > 0
+        if (hasContent === hasEdits) {
             throw new Error(`${resolved.relative}: provide either content or a non-empty edits list`)
         }
         await assertRegularFile(resolved.target).catch((error) => {
@@ -165,11 +167,11 @@ export async function updateWorkshopFiles({ files }) {
 
 /**
  * List files and folders in the workshop without following symbolic links.
- * @param {{ path?: string, recursive?: boolean, includeIgnored?: boolean }} input
+ * @param {{ path?: string | null, recursive?: boolean | null, includeIgnored?: boolean | null }} input
  * @returns {Promise<{ path: string, entries: Array<{ path: string, type: string, size?: number }>, truncated: boolean }>}
  */
 export async function listWorkshopFiles({ path: requested = ".", recursive = true, includeIgnored = false } = {}) {
-    const { root, target, relative } = await resolveWorkshopPath(requested, { allowRoot: true })
+    const { root, target, relative } = await resolveWorkshopPath(requested ?? ".", { allowRoot: true })
     const stat = await fs.lstat(target)
     if (!stat.isDirectory()) throw new Error("Path is not a directory")
 
@@ -190,7 +192,7 @@ export async function listWorkshopFiles({ path: requested = ".", recursive = tru
             } else if (child.isDirectory()) {
                 const ignored = !includeIgnored && IGNORED_DIRS.has(child.name)
                 entries.push({ path: `${entryPath}/`, type: "directory", ...(ignored && { skipped: true }) })
-                if (recursive && !ignored) await walk(full)
+                if ((recursive ?? true) && !ignored) await walk(full)
             } else if (child.isFile()) {
                 entries.push({ path: entryPath, type: "file", size: (await fs.lstat(full)).size })
             }
@@ -228,15 +230,15 @@ export const createFilesTool = tool(createWorkshopFiles, {
 
 export const updateFilesTool = tool(updateWorkshopFiles, {
     name: "update_files",
-    description: "Update one or more existing workshop files in a single call. For each file provide either content to replace the whole file, or edits: exact oldText/newText replacements applied in order, each matching exactly once. Nothing is written unless every change is valid.",
+    description: "Update one or more existing workshop files in a single call. For each file provide either content to replace the whole file, or edits: exact oldText/newText replacements applied in order, each matching exactly once. Set the unused field to null. Nothing is written unless every change is valid.",
     schema: z.object({
         files: fileList(z.object({
             path: filePath,
-            content: z.string().optional().describe("Complete replacement content"),
+            content: z.string().nullable().describe("Complete replacement content, or null when using edits"),
             edits: z.array(z.object({
                 oldText: z.string().min(1).describe("Exact text that occurs once in the file"),
                 newText: z.string().describe("Replacement for oldText"),
-            })).min(1).optional(),
+            })).min(1).nullable().describe("Exact replacements, or null when using content"),
         })),
     }),
 })

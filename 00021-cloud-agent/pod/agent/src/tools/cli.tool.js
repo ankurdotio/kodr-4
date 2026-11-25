@@ -6,11 +6,13 @@ const REQUEST_GRACE_MS = 10_000
 
 /**
  * Ask the workshop container to run a command inside the shared workshop folder.
- * @param {{ command: string, cwd?: string, timeoutMs?: number }} input
+ * @param {{ command: string, cwd?: string | null, timeoutMs?: number | null }} input
  * @returns {Promise<object>} Command output, exit code, signal, timeout, and truncation status.
  * @throws {Error} When the workshop server is unavailable or rejects the request.
  */
 export async function runWorkshopCommand({ command, cwd = ".", timeoutMs = 120_000 }) {
+    cwd ??= "."
+    timeoutMs ??= 120_000
     let response
     try {
         response = await fetch(new URL("/commands", env.WORKSHOP_SERVER_URL), {
@@ -35,8 +37,8 @@ export const runCommandTool = tool(runWorkshopCommand, {
     description: "Run a bash command in the workshop container. Commands always execute inside the shared workshop folder; cwd may select a subfolder.",
     schema: z.object({
         command: z.string().min(1).max(10_000).describe("Bash command to execute"),
-        cwd: z.string().optional().describe("Optional path relative to the workshop folder"),
-        timeoutMs: z.number().int().min(1_000).max(600_000).optional().describe("Timeout in milliseconds, default 120000"),
+        cwd: z.string().nullable().describe("Path relative to the workshop folder, or null for '.'"),
+        timeoutMs: z.number().int().min(1_000).max(600_000).nullable().describe("Timeout in milliseconds, or null for 120000"),
     }),
 })
 

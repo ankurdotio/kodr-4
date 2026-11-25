@@ -88,13 +88,13 @@ export const MainNode = async (state, config) => {
     const testerFeedback = state.testResult || state.testResults || ""
 
     const mainOutputFormat = z.object({
-        result: z.string().describe("A concise report of the implementation and verification"),
-        verification: z.array(z.string()).describe("Verification commands run and their outcomes"),
+        result: z.string().describe("The Final result after you implement and verify the code."),
+        verification: z.array(z.string()).describe("Verification commands that you run and their outcomes"),
         blockers: z.array(z.string()).describe("List of blockers encountered during this run"),
     })
 
     const agent = createAgent({
-        model: nvidiaUltra,
+        model: model,
         tools: [ ...fsTools, ...cliTools ],
         responseFormat: providerStrategy(mainOutputFormat),
     })
@@ -135,12 +135,12 @@ export const TestNode = async (state, config) => {
     } = state
 
     const outputFormat = z.object({
-        testResults: z.string().describe("The results of the tests run by the Main agent"),
-        status: z.boolean().describe("Whether the tests passed or failed")
+        testResults: z.string().describe("The detailed final results of the tests run by you."),
+        status: z.boolean().describe("Whether the tests passed (true) or failed (false)")
     })
 
     const agent = createAgent({
-        model,
+        model: model,
         tools: [ listFilesTool, readFilesTool, ...cliTools ],
         responseFormat: providerStrategy(outputFormat),
     })

@@ -19,7 +19,8 @@ export const mistralMedium = new ChatMistralAI({
 
 
 export const nvidiaUltra = new ChatOpenAI({
-    model: "mistralai/mistral-large-4-1t-a52b",
+    model: "nvidia/nemotron-3-ultra-550b-a55b",
+    temperature: 0.7,
     apiKey: env.NVIDIA_API_KEY,
     configuration: {
         baseURL: "https://integrate.api.nvidia.com/v1"

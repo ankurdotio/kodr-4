@@ -261,6 +261,10 @@ the latest model message; final structured fields such as `plan` and `tasks`
 come from the agent state. Tool-result updates do not emit empty placeholder
 events. Each Redis write is awaited, and write failures fail the agent run.
 
+Model-facing tool arguments use required, nullable fields for strict schema
+validation. Pass `null` to use listing or command defaults. For `update_files`,
+provide both `content` and `edits` on each file and set the unused field to `null`.
+
 Port 4000 is internal to the Compose network, not published on the host. From
 a client on that network:
 
