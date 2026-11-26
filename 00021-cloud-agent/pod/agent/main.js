@@ -14,7 +14,8 @@ try {
     const { graph } = await import("./src/graph/graph.js")
     if (process.env.TASK_MODE === "job") {
         await runTask({
-            invoke: graph.invoke.bind(graph), emit,
+            invoke: graph.invoke.bind(graph),
+            emit,
             input: {
                 userInput: process.env.TASK_INPUT, taskId: env.TASK_ID,
                 workspace: env.WORKSHOP_DIR, token: process.env.GITHUB_TOKEN,
@@ -24,8 +25,9 @@ try {
             },
         })
     } else {
-        await graph.invoke({ userInput: args[0] }, {
-            recursionLimit: 100, configurable: { emitEvent: emit },
+        await graph.invoke({ userInput: args[ 0 ] }, {
+            recursionLimit: 3000,
+            configurable: { emitEvent: emit },
         })
     }
 } catch (error) {

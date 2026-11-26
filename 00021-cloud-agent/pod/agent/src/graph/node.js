@@ -1,7 +1,7 @@
 import * as z from "zod"
 import { freshSystemPromptForPlanner, replanSystemPrompt } from "../prompt/planner.prompt.js"
 import { SystemMessage, HumanMessage, AIMessage, createAgent, providerStrategy } from "langchain"
-import model, { nvidiaUltra } from "../model.js"
+import model, { nvidiaUltra, bedrockModel } from "../model.js"
 import { fsTools, listFilesTool, readFilesTool } from "../tools/fs.tool.js"
 import { cliTools } from "../tools/cli.tool.js"
 import { mainAgentSystemPrompt } from "../prompt/main.prompt.js";
@@ -50,9 +50,9 @@ export const PlannerNode = async (state, config) => {
     })
 
     const agent = createAgent({
-        model: nvidiaUltra,
+        model: bedrockModel,
         tools: [ listFilesTool, readFilesTool ],
-        responseFormat: providerStrategy(outputFormat)
+        responseFormat: outputFormat
     })
 
 
@@ -94,9 +94,9 @@ export const MainNode = async (state, config) => {
     })
 
     const agent = createAgent({
-        model: model,
+        model: bedrockModel,
         tools: [ ...fsTools, ...cliTools ],
-        responseFormat: providerStrategy(mainOutputFormat),
+        responseFormat: mainOutputFormat,
     })
 
     const context = {
@@ -140,9 +140,9 @@ export const TestNode = async (state, config) => {
     })
 
     const agent = createAgent({
-        model: model,
+        model: bedrockModel,
         tools: [ listFilesTool, readFilesTool, ...cliTools ],
-        responseFormat: providerStrategy(outputFormat),
+        responseFormat: outputFormat,
     })
 
     const testAgentMessages = testHistory.length > 0 ? testHistory : [ new SystemMessage(testSystemPrompt) ]
